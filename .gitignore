@@ -60,3 +60,4 @@ console.log
 *.cc
 cplus_vm
 *.cpo
+*.bin

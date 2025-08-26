@@ -16,8 +16,9 @@ cplus::cstr cplus::cplus_output_file = "out.bin";
 
 static inline void usage()
 {
-    std::cout << "Usage: cplus [options] <input.cp>" << std::endl
-              << "Options:" << std::endl
+    // TODO: add colors and a better layout
+    std::cout << "USAGE: cplus [options] <input.cp>" << std::endl
+              << "OPTIONS:" << std::endl
               << "  -v,     --version   Show version information" << std::endl
               << "  -help,  --help      Show this help message" << std::endl
               << "  -d,     --debug     Enable debug mode" << std::endl
@@ -56,6 +57,11 @@ static inline void input(cplus::cstr filename)
 
 // clang-format off
 static const inline std::unordered_map<std::string, std::function<void()>> _flags = {
+    {"-h",
+        []() {
+            usage();
+            std::exit(0);
+        }},
     {"-help",
         []() {
             usage();
@@ -89,7 +95,7 @@ static const inline std::unordered_map<std::string, std::function<void()>> _flag
 
 void cplus::arguments(const i32 argc, const char **argv)
 {
-    for (i32 i = 0; i < argc; ++i) {
+    for (i32 i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
 
         if (arg.starts_with('-')) {

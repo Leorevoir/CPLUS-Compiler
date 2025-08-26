@@ -47,7 +47,7 @@ class Error final : public std::exception
          * @return std::string
          */
         template<typename... Args>
-        static inline std::string concat(Args &&...args)
+        static constexpr inline std::string concat(Args &&...args)
         {
             std::ostringstream oss;
 

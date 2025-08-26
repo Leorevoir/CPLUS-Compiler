@@ -1,6 +1,6 @@
 #pragma once
 
-#include "CPlus/Error.hpp"
+#include <CPlus/Error.hpp>
 #include <iostream>
 
 namespace cplus {
