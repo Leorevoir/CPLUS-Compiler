@@ -6,7 +6,9 @@
 // clang-format off
 static const std::unordered_map<std::string_view, cplus::TokenKind> keywords = {
     {"def", cplus::TokenKind::TOKEN_DEF},
+    {"const", cplus::TokenKind::TOKEN_CONST},
     {"return", cplus::TokenKind::TOKEN_RETURN},
+    {"struct", cplus::TokenKind::TOKEN_STRUCT},
 
     {"if", cplus::TokenKind::TOKEN_IF},
     {"elsif", cplus::TokenKind::TOKEN_ELSIF},
@@ -106,7 +108,13 @@ void cplus::LexicalAnalyzer::scan_token()
         case '~':
             add_token(TokenKind::TOKEN_NOT, "~");
             break;
+        case '"':
+            scan_string();
+            break;
 
+        case '\'':
+            scan_character();
+            break;
         case '-':
             if (match('>')) {
                 add_token(TokenKind::TOKEN_ARROW, "->");
@@ -290,6 +298,68 @@ void cplus::LexicalAnalyzer::scan_identifier()
     const TokenKind kind = (it != keywords.end()) ? it->second : TokenKind::TOKEN_IDENTIFIER;
 
     add_token(kind, lexeme);
+}
+
+void cplus::LexicalAnalyzer::scan_string()
+{
+    const size_t start = _position - 1;
+    const u64 start_line = _line;
+    const u64 start_column = _column - 1;
+
+    while (peek() != '"' && !is_at_end()) {
+        if (peek() == '\n') {
+            ++_line;
+            _column = 0;
+        }
+
+        if (peek() == '\\') {
+            advance();//<< consume backslash
+            if (!is_at_end()) {
+                advance();//<< consume escaped character
+            }
+        } else {
+            advance();
+        }
+    }
+
+    if (is_at_end()) {
+        throw exception::Error("LexicalAnalyzer", "Unterminated string at ", start_line, ":", start_column);
+    }
+
+    advance();
+
+    const std::string_view lexeme(_source.data() + start, _position - start);
+    add_token(TokenKind::TOKEN_STRING, lexeme);
+}
+
+void cplus::LexicalAnalyzer::scan_character()
+{
+    const size_t start = _position - 1;
+    const u64 start_line = _line;
+    const u64 start_column = _column - 1;
+
+    if (peek() == '\'') {
+        advance();//<< consume closing quote
+        throw exception::Error("LexicalAnalyzer", "Empty character literal at ", start_line, ":", start_column);
+    }
+
+    if (peek() == '\\') {
+        advance();//<< consume backslash
+        if (!is_at_end()) {
+            advance();//<< consume escaped character
+        }
+    } else {
+        advance();//<< consume the character
+    }
+
+    if (peek() != '\'' || is_at_end()) {
+        throw exception::Error("LexicalAnalyzer", "Unterminated character literal at ", start_line, ":", start_column);
+    }
+
+    advance();//<< consume closing quote
+
+    const std::string_view lexeme(_source.data() + start, _position - start);
+    add_token(TokenKind::TOKEN_CHARACTER, lexeme);
 }
 
 void cplus::LexicalAnalyzer::add_token(TokenKind kind, std::string_view lexeme)

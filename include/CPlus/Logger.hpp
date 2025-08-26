@@ -41,6 +41,14 @@ static constexpr inline void debug([[maybe_unused]] Args &&...args)
 #endif
 }
 
+template<typename... Args>
+static constexpr inline void info(Args &&...args)
+{
+    std::ostringstream oss;
+    const i32 __attribute__((unused)) _[] = {0, (oss << args, 0)...};
+    std::cout << CPLUS_YELLOW << "[INFO] " << CPLUS_RESET << oss.str() << std::endl;
+}
+
 }// namespace logger
 
 }// namespace cplus

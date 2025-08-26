@@ -38,6 +38,8 @@ class LexicalAnalyzer : public CompilerPass<std::string, std::vector<Token>>
 
         void scan_number();
         void scan_identifier();
+        void scan_string();
+        void scan_character();
 
         void add_token(const TokenKind kind, const std::string_view lexeme);
 };

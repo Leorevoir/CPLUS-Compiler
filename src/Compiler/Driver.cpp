@@ -25,6 +25,6 @@ void cplus::CompilerDriver::compile(const std::string &source)
     }
 
     for (const auto &token : tokens) {
-        stream << "Token: " << static_cast<int>(token.kind) << "\n";
+        stream << token << std::endl;
     }
 }

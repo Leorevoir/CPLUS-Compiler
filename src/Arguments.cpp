@@ -84,11 +84,11 @@ static const inline std::unordered_map<std::string, std::function<void()>> _flag
         }},
     {"-d",
         []() {
-            cplus::cplus_flags |= static_cast<int>(cplus::Flags::FLAG_DEBUG);
+            cplus::cplus_flags |= (cplus::Flags::FLAG_DEBUG);
         }},
     {"--debug",
         []() {
-            cplus::cplus_flags |= static_cast<int>(cplus::Flags::FLAG_DEBUG);
+            cplus::cplus_flags |= (cplus::Flags::FLAG_DEBUG);
         }},
 };
 // clang-format on
