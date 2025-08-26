@@ -19,7 +19,8 @@ static const std::unordered_map<std::string_view, cplus::TokenKind> keywords = {
     {"while", cplus::TokenKind::TOKEN_WHILE},
 
     {"case", cplus::TokenKind::TOKEN_CASE},
-    {"when", cplus::TokenKind::TOKEN_WHEN}
+    {"when", cplus::TokenKind::TOKEN_WHEN},
+    {"default", cplus::TokenKind::TOKEN_DEFAULT},
 };
 // clang-format on
 

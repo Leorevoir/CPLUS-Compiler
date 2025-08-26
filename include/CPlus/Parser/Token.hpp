@@ -30,6 +30,7 @@ enum class TokenKind {
 
     TOKEN_CASE,
     TOKEN_WHEN,
+    TOKEN_DEFAULT,
 
     TOKEN_OPEN_PAREN,
     TOKEN_CLOSE_PAREN,
@@ -119,6 +120,8 @@ static inline constexpr cplus::cstr to_string(const TokenKind kind)
             return "CASE";
         case TokenKind::TOKEN_WHEN:
             return "WHEN";
+        case TokenKind::TOKEN_DEFAULT:
+            return "DEFAULT";
 
         case TokenKind::TOKEN_OPEN_PAREN:
             return "OPEN_PAREN";
