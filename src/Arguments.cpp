@@ -8,9 +8,11 @@
 #include <string>
 #include <unordered_map>
 
+#include <sys/stat.h>
+
 int cplus::cplus_flags = 0;
 std::vector<cplus::cstr> cplus::cplus_input_files;
-cplus::cstr cplus::cplus_output_file = NULL;
+cplus::cstr cplus::cplus_output_file = "out.bin";
 
 static inline void usage()
 {
@@ -37,6 +39,19 @@ static inline void output(cplus::cstr filename)
 
     cplus::cplus_output_file = filename;
     output_set = true;
+}
+
+static inline void input(cplus::cstr filename)
+{
+    struct stat st;
+
+    if (stat(filename, &st) != 0) {
+        throw cplus::exception::Error("cplus::Arguments", "Input file does not exist: ", filename);
+    }
+    if (!S_ISREG(st.st_mode)) {
+        throw cplus::exception::Error("cplus::Arguments", "Input file is not a regular file: ", filename);
+    }
+    cplus::cplus_input_files.push_back(filename);
 }
 
 // clang-format off
@@ -72,7 +87,7 @@ static const inline std::unordered_map<std::string, std::function<void()>> _flag
 };
 // clang-format on
 
-void cplus::parse(const i32 argc, const char **argv)
+void cplus::arguments(const i32 argc, const char **argv)
 {
     for (i32 i = 0; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -96,7 +111,11 @@ void cplus::parse(const i32 argc, const char **argv)
             }
 
         } else {
-            cplus_input_files.push_back(argv[i]);
+            input(argv[i]);
         }
+    }
+
+    if (cplus_input_files.empty()) {
+        throw cplus::exception::Error("cplus::Arguments", "No input files provided");
     }
 }
