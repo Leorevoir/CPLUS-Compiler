@@ -7,7 +7,8 @@
 // clang-format off
 cplus::CompilerDriver::CompilerDriver()
     : _pipeline(
-        std::make_unique<LexicalAnalyzer>()
+        std::make_unique<LexicalAnalyzer>(),
+        std::make_unique<AbstractSyntaxTree>()
     )
 {
     /* __ctor__ */
@@ -16,7 +17,7 @@ cplus::CompilerDriver::CompilerDriver()
 
 void cplus::CompilerDriver::compile(const std::string &source)
 {
-    const auto tokens = _pipeline.execute(source);
+    const auto ast = _pipeline.execute(source);
 
     std::ofstream stream(cplus_output_file, std::ios::binary);
 
@@ -24,7 +25,6 @@ void cplus::CompilerDriver::compile(const std::string &source)
         throw exception::Error("CompilerDriver::compile", "Failed to open output stream");
     }
 
-    for (const auto &token : tokens) {
-        stream << token << std::endl;
-    }
+    stream << "AST compiled successfully\n";
+    stream << "Program has " << ast->declarations.size() << " declarations\n";
 }

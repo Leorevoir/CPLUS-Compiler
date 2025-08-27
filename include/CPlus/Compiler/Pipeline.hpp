@@ -37,12 +37,12 @@ class CompilerPipeline
         template<typename Input, size_t First, size_t... Rest>
         auto execute_impl_recursive(const Input &input, std::index_sequence<First, Rest...>)
         {
-            const auto intermediate = std::get<First>(_passes)->run(input);
+            auto intermediate = std::get<First>(_passes)->run(input);
 
             if constexpr (sizeof...(Rest) == 0) {
-                return intermediate;
+                return std::move(intermediate);
             } else {
-                return execute_impl_recursive(intermediate, std::index_sequence<Rest...>{});
+                return execute_impl_recursive(std::move(intermediate), std::index_sequence<Rest...>{});// And here
             }
         }
 
