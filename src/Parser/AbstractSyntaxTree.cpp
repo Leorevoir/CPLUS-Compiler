@@ -58,7 +58,7 @@ const cplus::Token &cplus::AbstractSyntaxTree::_consume(TokenKind kind, const st
         return _advance();
     }
 
-    auto &current = _peek();
+    const auto &current = _peek();
     throw exception::Error("AbstractSyntaxTree::_consume", message, " at ", std::to_string(current.line), ":",
         std::to_string(current.column));
 }
@@ -73,7 +73,7 @@ bool cplus::AbstractSyntaxTree::_check(TokenKind kind) const
 
 bool cplus::AbstractSyntaxTree::_match(const std::initializer_list<TokenKind> &kinds)
 {
-    for (auto &kind : kinds) {
+    for (const auto &kind : kinds) {
         if (_check(kind)) {
             _advance();
             return true;
@@ -167,7 +167,7 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_declaration()
 */
 cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_function_declaration()
 {
-    auto name = _consume(TokenKind::TOKEN_IDENTIFIER, "Expected function name");
+    const auto name = _consume(TokenKind::TOKEN_IDENTIFIER, "Expected function name");
     auto func = ast::make<ast::FunctionDeclaration>(name.lexeme);
 
     func->line = name.line;
@@ -178,7 +178,7 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_function_declaration(
     if (!_check(TokenKind::TOKEN_CLOSE_PAREN)) {
 
         do {
-            auto param_name = _consume(TokenKind::TOKEN_IDENTIFIER, "Expected parameter name");
+            const auto param_name = _consume(TokenKind::TOKEN_IDENTIFIER, "Expected parameter name");
 
             ast::TypePtr param_type = nullptr;
             if (_match({TokenKind::TOKEN_COLON})) {
@@ -213,7 +213,7 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_function_declaration(
 */
 cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_variable_declaration(bool is_const)
 {
-    auto name = _consume(TokenKind::TOKEN_IDENTIFIER, "Expected variable name");
+    const auto name = _consume(TokenKind::TOKEN_IDENTIFIER, "Expected variable name");
     auto var_decl = ast::make<ast::VariableDeclaration>(name.lexeme, is_const);
 
     var_decl->line = name.line;
@@ -232,7 +232,7 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_variable_declaration(
 
 cplus::ast::TypePtr cplus::AbstractSyntaxTree::_parse_type()
 {
-    auto type_token = _consume(TokenKind::TOKEN_IDENTIFIER, "Expected type name");
+    const auto type_token = _consume(TokenKind::TOKEN_IDENTIFIER, "Expected type name");
     ast::Type::Kind kind = ast::from_string(type_token.lexeme);
 
     return ast::make<ast::Type>(kind, type_token.lexeme);
@@ -415,7 +415,7 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_foreach_statement()
 {
     _consume(TokenKind::TOKEN_OPEN_PAREN, "Expected '(' after 'foreach'");
 
-    auto iterator_token = _consume(TokenKind::TOKEN_IDENTIFIER, "Expected iterator variable name");
+    const auto iterator_token = _consume(TokenKind::TOKEN_IDENTIFIER, "Expected iterator variable name");
     _consume(TokenKind::TOKEN_IN, "Expected 'in' keyword");
 
     auto iterable = _parse_expression();
@@ -459,7 +459,6 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_case_statement()
 
         _consume(TokenKind::TOKEN_COLON, "Expected ':' after case value");
 
-        // Parse statements until next case or end
         while (!_check(TokenKind::TOKEN_CLOSE_BRACE) && !_is_at_end() && !_check(TokenKind::TOKEN_DEFAULT)
             && !(_check(TokenKind::TOKEN_INTEGER) || _check(TokenKind::TOKEN_IDENTIFIER))) {
             if (auto stmt = _parse_statement()) {
