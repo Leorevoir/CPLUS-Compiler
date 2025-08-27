@@ -1,5 +1,6 @@
 #include <CPlus/Arguments.hpp>
 #include <CPlus/Error.hpp>
+#include <CPlus/Logger.hpp>
 #include <CPlus/Macros.hpp>
 #include <CPlus/Types.hpp>
 
@@ -14,20 +15,38 @@ int cplus::cplus_flags = 0;
 std::vector<cplus::cstr> cplus::cplus_input_files;
 cplus::cstr cplus::cplus_output_file = "out.bin";
 
+static constexpr auto bold = cplus::logger::CPLUS_BOLD;
+static constexpr auto reset = cplus::logger::CPLUS_RESET;
+static constexpr auto green = cplus::logger::CPLUS_GREEN;
+static constexpr auto yellow = cplus::logger::CPLUS_YELLOW;
+static constexpr auto blue = cplus::logger::CPLUS_BLUE;
+static constexpr auto gray = cplus::logger::CPLUS_GRAY;
+static constexpr auto red_bold = cplus::logger::CPLUS_RED_BOLD;
+
+constexpr auto print_option = [](const std::string &flags, const std::string &description) -> void {
+    std::cout << "  " << yellow << flags << reset << gray << "   " << description << reset << std::endl;
+};
+
 static inline void usage()
 {
-    // TODO: add colors and a better layout
-    std::cout << "USAGE: cplus [options] <input.cp>" << std::endl
-              << "OPTIONS:" << std::endl
-              << "  -v,     --version   Show version information" << std::endl
-              << "  -help,  --help      Show this help message" << std::endl
-              << "  -d,     --debug     Enable debug mode" << std::endl
-              << "  -o,     --output    Output file" << std::endl;
+    std::cout << bold << "USAGE: " << reset << green << "cplus " << reset << yellow << "[options] " << reset << blue << "<input.cp>"
+              << reset << std::endl
+              << std::endl
+              << bold << "OPTIONS:" << reset << std::endl;
+
+    print_option("-v,  --version", "Show version information");
+    print_option("-help, --help", " Show this help message");
+    print_option("-d,  --debug", "  Enable debug mode");
+    print_option("-o,  --output", " Output file");
+
+    std::cout << std::endl;
 }
 
 static inline void version()
 {
-    std::cout << "CPlus Version " << CPLUS_VERSION << std::endl;
+    std::cout << bold << "CPlus " << reset << green << CPLUS_VERSION << reset << std::endl
+              << "Not C, not C++, just " << red_bold << "C+" << reset << std::endl
+              << yellow << "Copyright (c) 2025-2026 CPlus Contributors" << reset << std::endl;
 }
 
 static inline void output(cplus::cstr filename)

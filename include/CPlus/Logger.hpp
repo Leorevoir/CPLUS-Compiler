@@ -15,6 +15,7 @@ constexpr const char *CPLUS_BLUE = "\033[1;34m";
 constexpr const char *CPLUS_RESET = "\033[0m";
 constexpr const char *CPLUS_MAGENTA = "\033[1;35m";
 constexpr const char *CPLUS_ITALIC = "\033[3m";
+constexpr const char *CPLUS_BOLD = "\033[1m";
 
 /**
  * @brief logger::error
