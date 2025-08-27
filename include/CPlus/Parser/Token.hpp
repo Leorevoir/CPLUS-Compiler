@@ -27,6 +27,7 @@ enum class TokenKind {
     TOKEN_FOR,
     TOKEN_FOREACH,
     TOKEN_WHILE,
+    TOKEN_IN,
 
     TOKEN_CASE,
     TOKEN_WHEN,

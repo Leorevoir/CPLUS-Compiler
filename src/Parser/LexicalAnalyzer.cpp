@@ -17,6 +17,7 @@ static const std::unordered_map<std::string_view, cplus::TokenKind> keywords = {
     {"for", cplus::TokenKind::TOKEN_FOR},
     {"foreach", cplus::TokenKind::TOKEN_FOREACH},
     {"while", cplus::TokenKind::TOKEN_WHILE},
+    {"in", cplus::TokenKind::TOKEN_IN},
 
     {"case", cplus::TokenKind::TOKEN_CASE},
     {"when", cplus::TokenKind::TOKEN_WHEN},

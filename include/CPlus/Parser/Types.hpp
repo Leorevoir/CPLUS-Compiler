@@ -13,10 +13,12 @@ namespace ast {
 class ASTNode;
 class Expression;
 class Statement;
+struct Type;
 
 using ASTNodePtr = std::unique_ptr<ASTNode>;
 using ExpressionPtr = std::unique_ptr<Expression>;
 using StatementPtr = std::unique_ptr<Statement>;
+using TypePtr = std::unique_ptr<Type>;
 
 class ASTNode
 {
@@ -32,23 +34,60 @@ struct Type {
         enum Kind { INT, FLOAT, STRING, BOOL, VOID, AUTO };
 
         Kind kind;
-        std::string name;
+        std::string_view name;
 
         inline Type(const Kind k) : kind(k)
         {
             /* __ctor__ */
         }
 
-        inline Type(Kind k, const std::string &n) : kind(k), name(n)
+        inline Type(Kind k, const std::string_view &n) : kind(k), name(n)
         {
             /* __ctor__ */
         }
 };
 
+static inline constexpr Type::Kind from_string(const std::string_view &str)
+{
+    if (str == "int") {
+        return Type::INT;
+    } else if (str == "float") {
+        return Type::FLOAT;
+    } else if (str == "string") {
+        return Type::STRING;
+    } else if (str == "bool") {
+        return Type::BOOL;
+    } else if (str == "void") {
+        return Type::VOID;
+    } else {
+        return Type::AUTO;
+    }
+}
+
+static inline constexpr cstr to_string(const Type::Kind kind)
+{
+    switch (kind) {
+        case Type::INT:
+            return "int";
+        case Type::FLOAT:
+            return "float";
+        case Type::STRING:
+            return "string";
+        case Type::BOOL:
+            return "bool";
+        case Type::VOID:
+            return "void";
+        case Type::AUTO:
+            return "auto";
+        default:
+            return "unknown";
+    }
+}
+
 class Expression : public ASTNode
 {
     public:
-        std::unique_ptr<Type> type;
+        TypePtr type;
 };
 
 class Statement : public ASTNode
@@ -59,7 +98,7 @@ class Statement : public ASTNode
 class LiteralExpression : public Expression
 {
     public:
-        std::variant<i64, double, std::string, bool> value;
+        std::variant<i64, double, std::string_view, bool> value;
 
         inline LiteralExpression(i64 val) : value(val)
         {
@@ -71,7 +110,7 @@ class LiteralExpression : public Expression
             /* __ctor__ */
         }
 
-        inline LiteralExpression(const std::string &val) : value(val)
+        inline LiteralExpression(const std::string_view &val) : value(val)
         {
             /* __ctor__ */
         }
@@ -87,9 +126,9 @@ class LiteralExpression : public Expression
 class IdentifierExpression : public Expression
 {
     public:
-        std::string name;
+        std::string_view name;
 
-        inline IdentifierExpression(const std::string &n) : name(n)
+        inline IdentifierExpression(const std::string_view &n) : name(n)
         {
             /* __ctor__ */
         }
@@ -133,10 +172,10 @@ class UnaryExpression : public Expression
 class CallExpression : public Expression
 {
     public:
-        std::string function_name;
+        std::string_view function_name;
         std::vector<ExpressionPtr> arguments;
 
-        inline CallExpression(const std::string &name) : function_name(name)
+        inline CallExpression(const std::string_view &name) : function_name(name)
         {
             /* __ctor__ */
         }
@@ -147,10 +186,10 @@ class CallExpression : public Expression
 class AssignmentExpression : public Expression
 {
     public:
-        std::string variable_name;
+        std::string_view variable_name;
         ExpressionPtr value;
 
-        inline AssignmentExpression(const std::string &name, ExpressionPtr val) : variable_name(name), value(std::move(val))
+        inline AssignmentExpression(const std::string_view &name, ExpressionPtr val) : variable_name(name), value(std::move(val))
         {
             /* __ctor__ */
         }
@@ -182,11 +221,12 @@ class BlockStatement : public Statement
 class VariableDeclaration : public Statement
 {
     public:
-        std::string name;
-        std::unique_ptr<Type> declared_type;//<< nullptr for auto-deduced
-        ExpressionPtr initializer;          //<< nullptr if no initializer
+        std::string_view name;
+        TypePtr declared_type;    //<< nullptr for auto-deduced
+        ExpressionPtr initializer;//<< nullptr if no initializer
+        bool is_const = false;
 
-        inline VariableDeclaration(const std::string &n) : name(n)
+        inline VariableDeclaration(const std::string_view &n, bool is_const_ = false) : name(n), is_const(is_const_)
         {
             /* __ctor__ */
         }
@@ -236,11 +276,11 @@ class ForStatement : public Statement
 class ForeachStatement : public Statement
 {
     public:
-        std::string iterator_name;
+        std::string_view iterator_name;
         ExpressionPtr iterable;
         StatementPtr body;
 
-        inline ForeachStatement(const std::string &iter, ExpressionPtr it, StatementPtr b)
+        inline ForeachStatement(const std::string_view &iter, ExpressionPtr it, StatementPtr b)
             : iterator_name(iter), iterable(std::move(it)), body(std::move(b))
         {
             /* __ctor__ */
@@ -271,10 +311,10 @@ class CaseStatement : public Statement
 class Parameter
 {
     public:
-        std::string name;
-        std::unique_ptr<Type> type;
+        std::string_view name;
+        TypePtr type;
 
-        inline Parameter(const std::string &n, std::unique_ptr<Type> t) : name(n), type(std::move(t))
+        inline Parameter(const std::string_view &n, TypePtr t) : name(n), type(std::move(t))
         {
             /* __ctor__ */
         }
@@ -283,12 +323,12 @@ class Parameter
 class FunctionDeclaration : public Statement
 {
     public:
-        std::string name;
+        std::string_view name;
         std::vector<Parameter> parameters;
-        std::unique_ptr<Type> return_type;
+        TypePtr return_type;
         StatementPtr body;
 
-        inline FunctionDeclaration(const std::string &n) : name(n)
+        inline FunctionDeclaration(const std::string_view &n) : name(n)
         {
             /* __ctor__ */
         }

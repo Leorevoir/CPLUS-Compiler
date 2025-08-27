@@ -42,7 +42,7 @@ class CompilerPipeline
             if constexpr (sizeof...(Rest) == 0) {
                 return std::move(intermediate);
             } else {
-                return execute_impl_recursive(std::move(intermediate), std::index_sequence<Rest...>{});// And here
+                return execute_impl_recursive(std::move(intermediate), std::index_sequence<Rest...>{});
             }
         }
 

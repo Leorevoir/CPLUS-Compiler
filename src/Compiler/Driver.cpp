@@ -24,7 +24,4 @@ void cplus::CompilerDriver::compile(const std::string &source)
     if (!stream.is_open()) {
         throw exception::Error("CompilerDriver::compile", "Failed to open output stream");
     }
-
-    stream << "AST compiled successfully\n";
-    stream << "Program has " << ast->declarations.size() << " declarations\n";
 }
