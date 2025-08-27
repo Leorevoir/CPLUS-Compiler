@@ -36,10 +36,10 @@ std::vector<cplus::Token> cplus::LexicalAnalyzer::run(const std::string &source)
     _line = 1;
     _column = 1;
 
-    while (!is_at_end()) {
-        scan_token();
+    while (!_is_at_end()) {
+        _scan_token();
     }
-    add_token(TokenKind::TOKEN_EOF, "");
+    _add_token(TokenKind::TOKEN_EOF, "");
     return _tokens;
 }
 
@@ -47,9 +47,9 @@ std::vector<cplus::Token> cplus::LexicalAnalyzer::run(const std::string &source)
  * private
  */
 
-void cplus::LexicalAnalyzer::scan_token()
+void cplus::LexicalAnalyzer::_scan_token()
 {
-    const char c = advance();
+    const char c = _advance();
 
     switch (c) {
         /** @brief whitespace */
@@ -65,128 +65,128 @@ void cplus::LexicalAnalyzer::scan_token()
 
         /** @brief single character tokens */
         case '(':
-            add_token(TokenKind::TOKEN_OPEN_PAREN, "(");
+            _add_token(TokenKind::TOKEN_OPEN_PAREN, "(");
             break;
         case ')':
-            add_token(TokenKind::TOKEN_CLOSE_PAREN, ")");
+            _add_token(TokenKind::TOKEN_CLOSE_PAREN, ")");
             break;
         case '{':
-            add_token(TokenKind::TOKEN_OPEN_BRACE, "{");
+            _add_token(TokenKind::TOKEN_OPEN_BRACE, "{");
             break;
         case '}':
-            add_token(TokenKind::TOKEN_CLOSE_BRACE, "}");
+            _add_token(TokenKind::TOKEN_CLOSE_BRACE, "}");
             break;
         case '[':
-            add_token(TokenKind::TOKEN_OPEN_BRACKET, "[");
+            _add_token(TokenKind::TOKEN_OPEN_BRACKET, "[");
             break;
         case ']':
-            add_token(TokenKind::TOKEN_CLOSE_BRACKET, "]");
+            _add_token(TokenKind::TOKEN_CLOSE_BRACKET, "]");
             break;
         case '.':
-            add_token(TokenKind::TOKEN_DOT, ".");
+            _add_token(TokenKind::TOKEN_DOT, ".");
             break;
         case ',':
-            add_token(TokenKind::TOKEN_COMMA, ",");
+            _add_token(TokenKind::TOKEN_COMMA, ",");
             break;
         case ':':
-            add_token(TokenKind::TOKEN_COLON, ":");
+            _add_token(TokenKind::TOKEN_COLON, ":");
             break;
         case ';':
-            add_token(TokenKind::TOKEN_SEMICOLON, ";");
+            _add_token(TokenKind::TOKEN_SEMICOLON, ";");
             break;
         case '+':
-            add_token(TokenKind::TOKEN_PLUS, "+");
+            _add_token(TokenKind::TOKEN_PLUS, "+");
             break;
         case '*':
-            add_token(TokenKind::TOKEN_ASTERISK, "*");
+            _add_token(TokenKind::TOKEN_ASTERISK, "*");
             break;
         case '%':
-            add_token(TokenKind::TOKEN_MODULO, "%");
+            _add_token(TokenKind::TOKEN_MODULO, "%");
             break;
         case '^':
-            add_token(TokenKind::TOKEN_XOR, "^");
+            _add_token(TokenKind::TOKEN_XOR, "^");
             break;
         case '~':
-            add_token(TokenKind::TOKEN_NOT, "~");
+            _add_token(TokenKind::TOKEN_NOT, "~");
             break;
         case '"':
-            scan_string();
+            _scan_string();
             break;
 
         case '\'':
-            scan_character();
+            _scan_character();
             break;
         case '-':
-            if (match('>')) {
-                add_token(TokenKind::TOKEN_ARROW, "->");
+            if (_match('>')) {
+                _add_token(TokenKind::TOKEN_ARROW, "->");
             } else {
-                add_token(TokenKind::TOKEN_MINUS, "-");
+                _add_token(TokenKind::TOKEN_MINUS, "-");
             }
             break;
 
         case '!':
-            if (match('=')) {
-                add_token(TokenKind::TOKEN_NEQ, "!=");
+            if (_match('=')) {
+                _add_token(TokenKind::TOKEN_NEQ, "!=");
             } else {
-                add_token(TokenKind::TOKEN_CMP_NOT, "!");
+                _add_token(TokenKind::TOKEN_CMP_NOT, "!");
             }
             break;
 
         case '=':
-            if (match('=')) {
-                add_token(TokenKind::TOKEN_EQ, "==");
+            if (_match('=')) {
+                _add_token(TokenKind::TOKEN_EQ, "==");
             } else {
-                add_token(TokenKind::TOKEN_ASSIGN, "=");
+                _add_token(TokenKind::TOKEN_ASSIGN, "=");
             }
             break;
 
         case '<':
-            if (match('=')) {
-                add_token(TokenKind::TOKEN_LTE, "<=");
+            if (_match('=')) {
+                _add_token(TokenKind::TOKEN_LTE, "<=");
             } else {
-                add_token(TokenKind::TOKEN_LT, "<");
+                _add_token(TokenKind::TOKEN_LT, "<");
             }
             break;
 
         case '>':
-            if (match('=')) {
-                add_token(TokenKind::TOKEN_GTE, ">=");
+            if (_match('=')) {
+                _add_token(TokenKind::TOKEN_GTE, ">=");
             } else {
-                add_token(TokenKind::TOKEN_GT, ">");
+                _add_token(TokenKind::TOKEN_GT, ">");
             }
             break;
 
         case '&':
-            if (match('&')) {
-                add_token(TokenKind::TOKEN_CMP_AND, "&&");
+            if (_match('&')) {
+                _add_token(TokenKind::TOKEN_CMP_AND, "&&");
             } else {
-                add_token(TokenKind::TOKEN_AND, "&");
+                _add_token(TokenKind::TOKEN_AND, "&");
             }
             break;
 
         case '|':
-            if (match('|')) {
-                add_token(TokenKind::TOKEN_CMP_OR, "||");
+            if (_match('|')) {
+                _add_token(TokenKind::TOKEN_CMP_OR, "||");
             } else {
-                add_token(TokenKind::TOKEN_OR, "|");
+                _add_token(TokenKind::TOKEN_OR, "|");
             }
             break;
 
         case '/':
-            if (match('/')) {
-                skip_line_comment();
-            } else if (match('*')) {
-                skip_block_comment();
+            if (_match('/')) {
+                _skip_line_comment();
+            } else if (_match('*')) {
+                _skip_block_comment();
             } else {
-                add_token(TokenKind::TOKEN_SLASH, "/");
+                _add_token(TokenKind::TOKEN_SLASH, "/");
             }
             break;
 
         default:
             if (std::isdigit(c)) {
-                scan_number();
+                _scan_number();
             } else if (std::isalpha(c) || c == '_') {
-                scan_identifier();
+                _scan_identifier();
             } else {
                 throw exception::Error("LexicalAnalyzer", "Unexpected character at ", _line, ":", _column);
             }
@@ -194,18 +194,18 @@ void cplus::LexicalAnalyzer::scan_token()
     }
 }
 
-char cplus::LexicalAnalyzer::advance()
+char cplus::LexicalAnalyzer::_advance()
 {
-    if (is_at_end()) {
+    if (_is_at_end()) {
         return '\0';
     }
     ++_column;
     return _source[_position++];
 }
 
-bool cplus::LexicalAnalyzer::match(char expected)
+bool cplus::LexicalAnalyzer::_match(char expected)
 {
-    if (is_at_end()) {
+    if (_is_at_end()) {
         return false;
     }
     if (_source[_position] != expected) {
@@ -216,15 +216,15 @@ bool cplus::LexicalAnalyzer::match(char expected)
     return true;
 }
 
-char cplus::LexicalAnalyzer::peek() const
+char cplus::LexicalAnalyzer::_peek() const
 {
-    if (is_at_end()) {
+    if (_is_at_end()) {
         return '\0';
     }
     return _source[_position];
 }
 
-char cplus::LexicalAnalyzer::peek_next() const
+char cplus::LexicalAnalyzer::_peek_next() const
 {
     if (_position + 1 >= _source.length()) {
         return '\0';
@@ -232,65 +232,65 @@ char cplus::LexicalAnalyzer::peek_next() const
     return _source[_position + 1];
 }
 
-bool cplus::LexicalAnalyzer::is_at_end() const
+bool cplus::LexicalAnalyzer::_is_at_end() const
 {
     return _position >= _source.length();
 }
 
-void cplus::LexicalAnalyzer::skip_line_comment()
+void cplus::LexicalAnalyzer::_skip_line_comment()
 {
-    while (peek() != '\n' && !is_at_end()) {
-        advance();
+    while (_peek() != '\n' && !_is_at_end()) {
+        _advance();
     }
 }
 
-void cplus::LexicalAnalyzer::skip_block_comment()
+void cplus::LexicalAnalyzer::_skip_block_comment()
 {
-    while (!is_at_end()) {
-        if (peek() == '*' && peek_next() == '/') {
-            advance();//<< consume *
-            advance();//<< consume /
+    while (!_is_at_end()) {
+        if (_peek() == '*' && _peek_next() == '/') {
+            _advance();//<< consume *
+            _advance();//<< consume /
             break;
         }
 
-        if (peek() == '\n') {
+        if (_peek() == '\n') {
             ++_line;
             _column = 0;
         }
 
-        advance();
+        _advance();
     }
 }
 
-void cplus::LexicalAnalyzer::scan_number()
+void cplus::LexicalAnalyzer::_scan_number()
 {
     const size_t start = _position - 1;
     bool is_float = false;
 
-    while (std::isdigit(peek())) {
-        advance();
+    while (std::isdigit(_peek())) {
+        _advance();
     }
 
-    if (peek() == '.' && std::isdigit(peek_next())) {
+    if (_peek() == '.' && std::isdigit(_peek_next())) {
         is_float = true;
-        advance();//<< consume .
+        _advance();//<< consume .
 
-        while (std::isdigit(peek())) {
-            advance();
+        while (std::isdigit(_peek())) {
+            _advance();
         }
     }
 
     const std::string_view lexeme(_source.data() + start, _position - start);
 
-    add_token(is_float ? TokenKind::TOKEN_FLOAT : TokenKind::TOKEN_INTEGER, lexeme);
+    _add_token(is_float ? TokenKind::TOKEN_FLOAT : TokenKind::TOKEN_INTEGER, lexeme);
 }
 
-void cplus::LexicalAnalyzer::scan_identifier()
+void cplus::LexicalAnalyzer::_scan_identifier()
 {
     const size_t start = _position - 1;
 
-    while (std::isalnum(peek()) || peek() == '_') {
-        advance();
+    while (std::isalnum(_peek()) || _peek() == '_') {
+        _advance();
     }
 
     const std::string_view lexeme(_source.data() + start, _position - start);
@@ -298,72 +298,72 @@ void cplus::LexicalAnalyzer::scan_identifier()
     const auto it = keywords.find(lexeme);
     const TokenKind kind = (it != keywords.end()) ? it->second : TokenKind::TOKEN_IDENTIFIER;
 
-    add_token(kind, lexeme);
+    _add_token(kind, lexeme);
 }
 
-void cplus::LexicalAnalyzer::scan_string()
+void cplus::LexicalAnalyzer::_scan_string()
 {
     const size_t start = _position - 1;
     const u64 start_line = _line;
     const u64 start_column = _column - 1;
 
-    while (peek() != '"' && !is_at_end()) {
-        if (peek() == '\n') {
+    while (_peek() != '"' && !_is_at_end()) {
+        if (_peek() == '\n') {
             ++_line;
             _column = 0;
         }
 
-        if (peek() == '\\') {
-            advance();//<< consume backslash
-            if (!is_at_end()) {
-                advance();//<< consume escaped character
+        if (_peek() == '\\') {
+            _advance();//<< consume backslash
+            if (!_is_at_end()) {
+                _advance();//<< consume escaped character
             }
         } else {
-            advance();
+            _advance();
         }
     }
 
-    if (is_at_end()) {
+    if (_is_at_end()) {
         throw exception::Error("LexicalAnalyzer", "Unterminated string at ", start_line, ":", start_column);
     }
 
-    advance();
+    _advance();
 
     const std::string_view lexeme(_source.data() + start, _position - start);
-    add_token(TokenKind::TOKEN_STRING, lexeme);
+    _add_token(TokenKind::TOKEN_STRING, lexeme);
 }
 
-void cplus::LexicalAnalyzer::scan_character()
+void cplus::LexicalAnalyzer::_scan_character()
 {
     const size_t start = _position - 1;
     const u64 start_line = _line;
     const u64 start_column = _column - 1;
 
-    if (peek() == '\'') {
-        advance();//<< consume closing quote
+    if (_peek() == '\'') {
+        _advance();//<< consume closing quote
         throw exception::Error("LexicalAnalyzer", "Empty character literal at ", start_line, ":", start_column);
     }
 
-    if (peek() == '\\') {
-        advance();//<< consume backslash
-        if (!is_at_end()) {
-            advance();//<< consume escaped character
+    if (_peek() == '\\') {
+        _advance();//<< consume backslash
+        if (!_is_at_end()) {
+            _advance();//<< consume escaped character
         }
     } else {
-        advance();//<< consume the character
+        _advance();//<< consume the character
     }
 
-    if (peek() != '\'' || is_at_end()) {
+    if (_peek() != '\'' || _is_at_end()) {
         throw exception::Error("LexicalAnalyzer", "Unterminated character literal at ", start_line, ":", start_column);
     }
 
-    advance();//<< consume closing quote
+    _advance();//<< consume closing quote
 
     const std::string_view lexeme(_source.data() + start, _position - start);
-    add_token(TokenKind::TOKEN_CHARACTER, lexeme);
+    _add_token(TokenKind::TOKEN_CHARACTER, lexeme);
 }
 
-void cplus::LexicalAnalyzer::add_token(TokenKind kind, std::string_view lexeme)
+void cplus::LexicalAnalyzer::_add_token(TokenKind kind, std::string_view lexeme)
 {
     _tokens.push_back({.kind = kind, .lexeme = lexeme, .line = _line, .column = _column - lexeme.length()});
 }

@@ -25,23 +25,23 @@ class LexicalAnalyzer : public CompilerPass<std::string, std::vector<Token>>
 
         std::vector<Token> _tokens;
 
-        void scan_token();
-        char advance();
-        bool match(const char expected);
+        void _scan_token();
+        char _advance();
+        bool _match(const char expected);
 
-        char peek() const;
-        char peek_next() const;
-        bool is_at_end() const;
+        char _peek() const;
+        char _peek_next() const;
+        bool _is_at_end() const;
 
-        void skip_line_comment();
-        void skip_block_comment();
+        void _skip_line_comment();
+        void _skip_block_comment();
 
-        void scan_number();
-        void scan_identifier();
-        void scan_string();
-        void scan_character();
+        void _scan_number();
+        void _scan_identifier();
+        void _scan_string();
+        void _scan_character();
 
-        void add_token(const TokenKind kind, const std::string_view lexeme);
+        void _add_token(const TokenKind kind, const std::string_view lexeme);
 };
 
 }// namespace cplus
