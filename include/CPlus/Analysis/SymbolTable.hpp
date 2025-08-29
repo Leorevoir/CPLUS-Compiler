@@ -13,6 +13,7 @@ struct Symbol {
     enum Kind { VARIABLE, FUNCTION, PARAMETER } kind;
     std::string name;
     ast::TypePtr type;
+    std::vector<ast::TypePtr> param_types;
     bool is_const;
     u64 line;
     u64 column;
@@ -31,18 +32,16 @@ class Scope
         Scope *parent;
         std::unordered_map<std::string, std::unique_ptr<Symbol>> symbols;
 
-        explicit constexpr Scope(Scope *p = nullptr) : parent(p)
+        explicit Scope(Scope *p = nullptr) : parent(p)
         {
-            /* __ctor__ */
+            symbols.reserve(32);
         }
 
-        inline bool declare(const std::string &name, std::unique_ptr<Symbol> sym)
+        inline bool declare(std::string name, std::unique_ptr<Symbol> sym)
         {
-            if (symbols.find(name) != symbols.end()) {
-                return false;
-            }
-            symbols[name] = std::move(sym);
-            return true;
+            const auto [it, inserted] = symbols.emplace(std::move(name), std::move(sym));
+
+            return inserted;
         }
 
         inline Symbol *lookup_local(const std::string &name)
@@ -74,8 +73,9 @@ class SymbolTable : public CompilerPass<std::unique_ptr<ast::Module>, std::uniqu
         std::unique_ptr<ast::Module> run(const std::unique_ptr<ast::Module> &module) override;
 
     private:
-        std::vector<std::unique_ptr<st::Scope>> scope_stack;
-        st::Scope *current_scope = nullptr;
+        std::vector<std::unique_ptr<st::Scope>> _scope_stack;
+        std::vector<ast::TypePtr> _return_type_stack;
+        st::Scope *_current_scope = nullptr;
         cstr _module;
 
         void visit(ast::LiteralExpression &node) override;
@@ -94,6 +94,8 @@ class SymbolTable : public CompilerPass<std::unique_ptr<ast::Module>, std::uniqu
         void visit(ast::CaseStatement &node) override;
         void visit(ast::FunctionDeclaration &node) override;
         void visit(ast::Module &node) override;
+
+        void _add_standard_library();
 
         void _enter_scope();
         void _exit_scope();

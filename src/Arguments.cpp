@@ -80,26 +80,10 @@ static constexpr inline void input(cplus::cstr filename)
 
 // clang-format off
 static const inline std::unordered_map<std::string, std::function<void()>> _flags = {
-    {"-h",
-        []() {
-            usage();
-        }},
-    {"-help",
-        []() {
-            usage();
-        }},
-    {"--help",
-        []() {
-            usage();
-        }},
-    {"-v",
-        []() {
-            version();
-        }},
-    {"--version",
-        []() {
-            version();
-        }},
+    {"-h", usage},
+    {"--help", usage},
+    {"-v", version},
+    {"--version", version},
     {"-d",
         []() {
             cplus::cplus_flags |= (cplus::Flags::FLAG_DEBUG);
