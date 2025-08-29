@@ -156,7 +156,7 @@ class BinaryExpression : public Expression
 class UnaryExpression : public Expression
 {
     public:
-        enum Operator { NOT, NEGATE, PLUS };
+        enum Operator { NOT, NEGATE, PLUS, INC, DEC };
 
         Operator op;
         ExpressionPtr operand;

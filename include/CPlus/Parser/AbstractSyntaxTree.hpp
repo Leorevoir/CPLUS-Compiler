@@ -25,6 +25,7 @@ class AbstractSyntaxTree : public CompilerPass<std::vector<Token>, std::unique_p
         const Token &_advance();
         const Token &_consume(TokenKind kind, const std::string &message);
         bool _check(TokenKind kind) const;
+        bool _check(TokenKind kind, u64 offset) const;
         bool _match(const std::initializer_list<TokenKind> &kinds);
 
         void _synchronize();
@@ -36,7 +37,7 @@ class AbstractSyntaxTree : public CompilerPass<std::vector<Token>, std::unique_p
         /** @brief statements */
         ast::StatementPtr _parse_declaration();
         ast::StatementPtr _parse_function_declaration();
-        ast::StatementPtr _parse_variable_declaration(bool is_const);
+        ast::StatementPtr _parse_variable_declaration(bool is_const, bool semi_colon);
         ast::StatementPtr _parse_statement();
         ast::StatementPtr _parse_block_statement();
         ast::StatementPtr _parse_if_statement();

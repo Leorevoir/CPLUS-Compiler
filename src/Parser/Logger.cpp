@@ -119,14 +119,62 @@ void cplus::ast::ASTLogger::visit(IfStatement &node)
     _pop();
 }
 
-void cplus::ast::ASTLogger::visit(ForStatement __attribute__((unused)) & node)
+void cplus::ast::ASTLogger::visit(ForStatement &node)
 {
     _show_indent("For\n");
+    _push();
+
+    if (node.initializer) {
+        _show_indent("Initializer:\n");
+        _push();
+        node.initializer->accept(*this);
+        _pop();
+    }
+
+    if (node.condition) {
+        _show_indent("Condition:\n");
+        _push();
+        node.condition->accept(*this);
+        _pop();
+    }
+
+    if (node.increment) {
+        _show_indent("Increment:\n");
+        _push();
+        node.increment->accept(*this);
+        _pop();
+    }
+
+    if (node.body) {
+        _show_indent("Body:\n");
+        _push();
+        node.body->accept(*this);
+        _pop();
+    }
+
+    _pop();
 }
 
 void cplus::ast::ASTLogger::visit(ForeachStatement &node)
 {
     _show_indent("Foreach " + std::string(node.iterator_name) + "\n");
+    _push();
+
+    if (node.iterable) {
+        _show_indent("Iterable:\n");
+        _push();
+        node.iterable->accept(*this);
+        _pop();
+    }
+
+    if (node.body) {
+        _show_indent("Body:\n");
+        _push();
+        node.body->accept(*this);
+        _pop();
+    }
+
+    _pop();
 }
 
 void cplus::ast::ASTLogger::visit(CaseStatement __attribute__((unused)) & node)

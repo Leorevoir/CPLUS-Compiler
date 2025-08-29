@@ -11,7 +11,14 @@ std::unique_ptr<cplus::ast::Program> cplus::AbstractSyntaxTree::run(const std::v
     _tokens = tokens;
     _current = 0;
 
-    return _parse_program();
+    auto program = _parse_program();
+
+    if (cplus_flags & FLAG_DEBUG) {
+        ast::ASTLogger logger;
+        logger.show(*program);
+    }
+
+    return program;
 }
 
 /**
@@ -71,6 +78,14 @@ bool cplus::AbstractSyntaxTree::_check(TokenKind kind) const
     return _tokens[_current].kind == kind;
 }
 
+bool cplus::AbstractSyntaxTree::_check(TokenKind kind, u64 offset) const
+{
+    if (_current + offset >= _tokens.size()) {
+        return false;
+    }
+    return _tokens[_current + offset].kind == kind;
+}
+
 bool cplus::AbstractSyntaxTree::_match(const std::initializer_list<TokenKind> &kinds)
 {
     for (const auto &kind : kinds) {
@@ -84,28 +99,22 @@ bool cplus::AbstractSyntaxTree::_match(const std::initializer_list<TokenKind> &k
 
 void cplus::AbstractSyntaxTree::_synchronize()
 {
-    _advance();
-
     while (!_is_at_end()) {
-
-        if (_previous().kind == TokenKind::TOKEN_SEMICOLON) {
+        if (_previous().kind == TokenKind::TOKEN_SEMICOLON || _peek().kind == TokenKind::TOKEN_CLOSE_BRACE) {
             return;
         }
-
         switch (_peek().kind) {
             case TokenKind::TOKEN_DEF:
             case TokenKind::TOKEN_CONST:
-            case TokenKind::TOKEN_RETURN:
-            case TokenKind::TOKEN_STRUCT:
             case TokenKind::TOKEN_IF:
             case TokenKind::TOKEN_FOR:
             case TokenKind::TOKEN_FOREACH:
-            case TokenKind::TOKEN_WHILE:
+            case TokenKind::TOKEN_CASE:
+            case TokenKind::TOKEN_RETURN:
                 return;
             default:
-                break;
+                _advance();
         }
-        _advance();
     }
 }
 
@@ -123,11 +132,6 @@ std::unique_ptr<cplus::ast::Program> cplus::AbstractSyntaxTree::_parse_program()
         }
     }
 
-    if (cplus_flags & FLAG_DEBUG) {
-        ast::ASTLogger logger;
-        logger.show(*program);
-    }
-
     return program;
 }
 
@@ -139,7 +143,7 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_declaration()
             return _parse_function_declaration();
         }
         if (_match({TokenKind::TOKEN_CONST})) {
-            return _parse_variable_declaration(true);
+            return _parse_variable_declaration(true, true);
         }
 
         return _parse_statement();
@@ -211,7 +215,7 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_function_declaration(
 *
 * @note type is inferred from initializer if not explicitly provided
 */
-cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_variable_declaration(bool is_const)
+cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_variable_declaration(bool is_const, bool expect_semicolon = true)
 {
     const auto name = _consume(TokenKind::TOKEN_IDENTIFIER, "Expected variable name");
     auto var_decl = ast::make<ast::VariableDeclaration>(name.lexeme, is_const);
@@ -226,7 +230,9 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_variable_declaration(
         var_decl->initializer = _parse_expression();
     }
 
-    _consume(TokenKind::TOKEN_SEMICOLON, "Expected ';' after variable declaration");
+    if (expect_semicolon) {
+        _consume(TokenKind::TOKEN_SEMICOLON, "Expected ';' after variable declaration");
+    }
     return var_decl;
 }
 
@@ -297,19 +303,16 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_statement()
     if (_check(TokenKind::TOKEN_OPEN_BRACE)) {
         return _parse_block_statement();
     }
-
     if (_check(TokenKind::TOKEN_IDENTIFIER)) {
         const u64 pos = _current;
         _advance();
-
         if (_check(TokenKind::TOKEN_COLON) || _check(TokenKind::TOKEN_ASSIGN)) {
             _current = pos;
-            return _parse_variable_declaration(false);
+            return _parse_variable_declaration(false, true);
         }
-
         _current = pos;
+        return _parse_expression_statement();
     }
-
     return _parse_expression_statement();
 }
 
@@ -352,9 +355,11 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_block_statement()
  */
 cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_if_statement()
 {
-    _consume(TokenKind::TOKEN_OPEN_PAREN, "Expected '(' after 'if'");
+    while (_match({TokenKind::TOKEN_OPEN_PAREN}) && _check(TokenKind::TOKEN_CLOSE_PAREN))
+        ;
     auto condition = _parse_expression();
-    _consume(TokenKind::TOKEN_CLOSE_PAREN, "Expected ')' after if condition");
+    while (_match({TokenKind::TOKEN_CLOSE_PAREN}) && _check(TokenKind::TOKEN_CLOSE_PAREN))
+        ;
 
     auto then_stmt = _parse_statement();
     auto if_stmt = ast::make<ast::IfStatement>(std::move(condition), std::move(then_stmt));
@@ -369,32 +374,57 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_if_statement()
 /**
 * @brief for loop statement
 * @syntax for (initializer; condition; increment) { body }
+* @syntax for initializer; condition; increment { body }
 *
 * for (i:int = 0; i < 10; ++i) {
 *     print(i);
 * }
+*
+* for i = 0; i < 10; ++i {
+*     print(i);
+* }
+*
+* @note the parentheses are sugar syntax, they can be omitted if not needed
 */
 cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_for_statement()
 {
-    _consume(TokenKind::TOKEN_OPEN_PAREN, "Expected '(' after 'for'");
-
     auto for_stmt = ast::make<ast::ForStatement>();
+    const bool has_paren = _match({TokenKind::TOKEN_OPEN_PAREN});
 
-    if (_match({TokenKind::TOKEN_SEMICOLON})) {
-        for_stmt->initializer = nullptr;
-    } else {
-        for_stmt->initializer = _parse_declaration();
+    if (!_check(TokenKind::TOKEN_SEMICOLON)) {
+
+        if (_check(TokenKind::TOKEN_IDENTIFIER)) {
+            const u64 pos = _current;
+            _advance();
+
+            if (_check(TokenKind::TOKEN_COLON) || _check(TokenKind::TOKEN_ASSIGN)) {
+                _current = pos;
+                for_stmt->initializer = _parse_variable_declaration(false, false);
+            } else {
+                _current = pos;
+                for_stmt->initializer = ast::make<ast::ExpressionStatement>(_parse_expression());
+            }
+
+        } else {
+            for_stmt->initializer = ast::make<ast::ExpressionStatement>(_parse_expression());
+        }
     }
+
+    _consume(TokenKind::TOKEN_SEMICOLON, "Expected ';' after for loop initializer");
 
     if (!_check(TokenKind::TOKEN_SEMICOLON)) {
         for_stmt->condition = _parse_expression();
     }
+
     _consume(TokenKind::TOKEN_SEMICOLON, "Expected ';' after for loop condition");
 
-    if (!_check(TokenKind::TOKEN_CLOSE_PAREN)) {
+    if (!_check(TokenKind::TOKEN_OPEN_BRACE) && !(has_paren && _check(TokenKind::TOKEN_CLOSE_PAREN))) {
         for_stmt->increment = _parse_expression();
     }
-    _consume(TokenKind::TOKEN_CLOSE_PAREN, "Expected ')' after for clauses");
+
+    if (has_paren) {
+        _consume(TokenKind::TOKEN_CLOSE_PAREN, "Expected ')' after for loop increment");
+    }
 
     for_stmt->body = _parse_statement();
 
@@ -404,22 +434,30 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_for_statement()
 /**
 * @brief foreach loop statement
 * @syntax foreach (iterator in iterable) { body }
+* @syntax foreach iterator in iterable { body }
 *
 * foreach (item in collection) {
 *     print(item);
+* }
+*
+* foreach c in "Hello C+" {
+*     print(c);
 * }
 *
 * better than for (i = 0; i < collection.size(); ++i) {print(collection[i]);}
 */
 cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_foreach_statement()
 {
-    _consume(TokenKind::TOKEN_OPEN_PAREN, "Expected '(' after 'foreach'");
+    const bool has_paren = _match({TokenKind::TOKEN_OPEN_PAREN});
+    const auto iterator_token = _consume(TokenKind::TOKEN_IDENTIFIER, "Expected iterator name in foreach");
 
-    const auto iterator_token = _consume(TokenKind::TOKEN_IDENTIFIER, "Expected iterator variable name");
-    _consume(TokenKind::TOKEN_IN, "Expected 'in' keyword");
+    _consume(TokenKind::TOKEN_IN, "Expected 'in' after iterator in foreach");
 
     auto iterable = _parse_expression();
-    _consume(TokenKind::TOKEN_CLOSE_PAREN, "Expected ')' after foreach");
+
+    if (has_paren) {
+        _consume(TokenKind::TOKEN_CLOSE_PAREN, "Expected ')' after foreach expression");
+    }
 
     auto body = _parse_statement();
 
@@ -443,34 +481,25 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_case_statement()
     _consume(TokenKind::TOKEN_OPEN_PAREN, "Expected '(' after 'case'");
     auto expression = _parse_expression();
     _consume(TokenKind::TOKEN_CLOSE_PAREN, "Expected ')' after case expression");
+    _consume(TokenKind::TOKEN_OPEN_BRACE, "Expected '{' before case clauses");
 
     auto case_stmt = ast::make<ast::CaseStatement>(std::move(expression));
 
-    _consume(TokenKind::TOKEN_OPEN_BRACE, "Expected '{' before case clauses");
-
     while (!_check(TokenKind::TOKEN_CLOSE_BRACE) && !_is_at_end()) {
         ast::CaseStatement::CaseClause clause;
-
-        if (_match({TokenKind::TOKEN_DEFAULT})) {
-            clause.value = nullptr;//<< default case
-        } else {
-            clause.value = _parse_expression();
-        }
-
+        clause.value = _match({TokenKind::TOKEN_DEFAULT}) ? nullptr : _parse_expression();
         _consume(TokenKind::TOKEN_COLON, "Expected ':' after case value");
 
-        while (!_check(TokenKind::TOKEN_CLOSE_BRACE) && !_is_at_end() && !_check(TokenKind::TOKEN_DEFAULT)
-            && !(_check(TokenKind::TOKEN_INTEGER) || _check(TokenKind::TOKEN_IDENTIFIER))) {
-            if (auto stmt = _parse_statement()) {
+        while (!_check(TokenKind::TOKEN_CLOSE_BRACE) && !_is_at_end()
+            && !(_check(TokenKind::TOKEN_INTEGER) || _check(TokenKind::TOKEN_DEFAULT))) {
+            if (auto stmt = _parse_declaration()) {
                 clause.statements.push_back(std::move(stmt));
             }
         }
-
         case_stmt->clauses.push_back(std::move(clause));
     }
 
     _consume(TokenKind::TOKEN_CLOSE_BRACE, "Expected '}' after case clauses");
-
     return case_stmt;
 }
 
@@ -677,7 +706,7 @@ cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_factor()
 */
 cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_unary()
 {
-    if (_match({TokenKind::TOKEN_CMP_NOT, TokenKind::TOKEN_MINUS, TokenKind::TOKEN_PLUS})) {
+    if (_match({TokenKind::TOKEN_CMP_NOT, TokenKind::TOKEN_MINUS, TokenKind::TOKEN_PLUS, TokenKind::TOKEN_INC, TokenKind::TOKEN_DEC})) {
         ast::UnaryExpression::Operator op;
         switch (_previous().kind) {
             case TokenKind::TOKEN_CMP_NOT:
@@ -688,6 +717,12 @@ cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_unary()
                 break;
             case TokenKind::TOKEN_PLUS:
                 op = ast::UnaryExpression::PLUS;
+                break;
+            case TokenKind::TOKEN_INC:
+                op = ast::UnaryExpression::INC;
+                break;
+            case TokenKind::TOKEN_DEC:
+                op = ast::UnaryExpression::DEC;
                 break;
             default:
                 throw exception::Error("AbstractSyntaxTree::_parse_unary", "Unknown unary operator at ", std::to_string(_previous().line),

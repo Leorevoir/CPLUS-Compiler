@@ -1,4 +1,6 @@
+#include "CPlus/Arguments.hpp"
 #include "CPlus/Error.hpp"
+#include "CPlus/Logger.hpp"
 #include <CPlus/Parser/LexicalAnalyzer.hpp>
 #include <cctype>
 #include <unordered_map>
@@ -41,6 +43,14 @@ std::vector<cplus::Token> cplus::LexicalAnalyzer::run(const std::string &source)
         _scan_token();
     }
     _add_token(TokenKind::TOKEN_EOF, "");
+
+    if (cplus_flags & FLAG_DEBUG) {
+        logger::info("LexicalAnalyzer", "Tokens:");
+        for (const auto &token : _tokens) {
+            logger::info("  ", token);
+        }
+    }
+
     return _tokens;
 }
 
@@ -96,7 +106,11 @@ void cplus::LexicalAnalyzer::_scan_token()
             _add_token(TokenKind::TOKEN_SEMICOLON, ";");
             break;
         case '+':
-            _add_token(TokenKind::TOKEN_PLUS, "+");
+            if (_match('+')) {
+                _add_token(TokenKind::TOKEN_INC, "++");
+            } else {
+                _add_token(TokenKind::TOKEN_PLUS, "+");
+            }
             break;
         case '*':
             _add_token(TokenKind::TOKEN_ASTERISK, "*");
@@ -120,6 +134,8 @@ void cplus::LexicalAnalyzer::_scan_token()
         case '-':
             if (_match('>')) {
                 _add_token(TokenKind::TOKEN_ARROW, "->");
+            } else if (_match('-')) {
+                _add_token(TokenKind::TOKEN_DEC, "--");
             } else {
                 _add_token(TokenKind::TOKEN_MINUS, "-");
             }

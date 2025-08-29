@@ -44,7 +44,7 @@ static inline void usage()
 
 static inline void version()
 {
-    std::cout << bold << "CPlus " << reset << green << CPLUS_VERSION << reset << std::endl
+    std::cout << bold << "CPlus " << reset << "v." << CPLUS_VERSION << std::endl
               << "Not C, not C++, just " << red_bold << "C+" << reset << std::endl
               << yellow << "Copyright (c) 2025-2026 CPlus Contributors" << reset << std::endl;
 }

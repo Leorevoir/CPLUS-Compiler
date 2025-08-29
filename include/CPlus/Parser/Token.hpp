@@ -3,7 +3,6 @@
 #include "CPlus/Logger.hpp"
 #include <CPlus/Types.hpp>
 
-#include <fstream>
 #include <string_view>
 
 namespace cplus {
@@ -55,6 +54,8 @@ enum class TokenKind {
 
     TOKEN_PLUS,
     TOKEN_MINUS,
+    TOKEN_INC,
+    TOKEN_DEC,
     TOKEN_ASTERISK,
     TOKEN_SLASH,
     TOKEN_MODULO,
@@ -117,6 +118,9 @@ static inline constexpr cplus::cstr to_string(const TokenKind kind)
         case TokenKind::TOKEN_WHILE:
             return "WHILE";
 
+        case TokenKind::TOKEN_IN:
+            return "IN";
+
         case TokenKind::TOKEN_CASE:
             return "CASE";
         case TokenKind::TOKEN_WHEN:
@@ -165,6 +169,10 @@ static inline constexpr cplus::cstr to_string(const TokenKind kind)
             return "PLUS";
         case TokenKind::TOKEN_MINUS:
             return "MINUS";
+        case TokenKind::TOKEN_INC:
+            return "INC";
+        case TokenKind::TOKEN_DEC:
+            return "DEC";
         case TokenKind::TOKEN_ASTERISK:
             return "ASTERISK";
         case TokenKind::TOKEN_SLASH:
