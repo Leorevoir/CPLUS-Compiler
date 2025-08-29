@@ -68,7 +68,7 @@ class SymbolTable : public CompilerPass<std::unique_ptr<ast::Module>, std::uniqu
 {
     public:
         constexpr SymbolTable() = default;
-        constexpr ~SymbolTable() = default;
+        constexpr ~SymbolTable() override = default;
 
         std::unique_ptr<ast::Module> run(const std::unique_ptr<ast::Module> &module) override;
 
