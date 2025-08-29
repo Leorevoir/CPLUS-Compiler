@@ -34,12 +34,12 @@ static constexpr inline void usage()
               << std::endl
               << bold << "OPTIONS:" << reset << std::endl;
 
-    print_option("-v,  --version", "Show version information");
-    print_option("-help, --help", " Show this help message");
-    print_option("-d,  --debug", "  Enable debug mode");
-    print_option("-o,  --output", " Output file");
-    print_option("-t,  --show-tokens", " Show Tokens");
-    print_option("-a,  --show-ast", " Show AST");
+    print_option("-v,  --version", "    Show version information");
+    print_option("-help, --help", "     Show this help message");
+    print_option("-d,  --debug", "      Enable debug mode");
+    print_option("-o,  --output", "     Output file");
+    print_option("-t,  --show-tokens", "Show Tokens");
+    print_option("-a,  --show-ast", "   Show AST");
 
     std::cout << std::endl;
     std::exit(CPLUS_SUCCESS);
