@@ -9,6 +9,8 @@
 
 namespace cplus {
 
+namespace lx {
+
 /**
 * @brief LexicalAnalyzer
 * @details converts source code into tokens
@@ -51,5 +53,7 @@ class LexicalAnalyzer : public CompilerPass<FileContent, std::vector<Token>>
 
         void _add_token(const TokenKind kind, const std::string_view lexeme);
 };
+
+}// namespace lx
 
 }// namespace cplus

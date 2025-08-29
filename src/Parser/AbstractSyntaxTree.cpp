@@ -6,7 +6,7 @@
 * public
 */
 
-std::unique_ptr<cplus::ast::Module> cplus::AbstractSyntaxTree::run(const std::vector<Token> &tokens)
+std::unique_ptr<cplus::ast::Module> cplus::ast::AbstractSyntaxTree::run(const std::vector<lx::Token> &tokens)
 {
     _tokens = tokens;
     _current = 0;
@@ -14,7 +14,7 @@ std::unique_ptr<cplus::ast::Module> cplus::AbstractSyntaxTree::run(const std::ve
     auto module = _parse_module();
 
     if (cplus_flags & FLAG_SHOW_AST) {
-        ast::ASTLogger logger;
+        ASTLogger logger;
         logger.show(*module);
     }
 
@@ -25,33 +25,33 @@ std::unique_ptr<cplus::ast::Module> cplus::AbstractSyntaxTree::run(const std::ve
  * helpers
  */
 
-bool cplus::AbstractSyntaxTree::_is_at_end() const
+bool cplus::ast::AbstractSyntaxTree::_is_at_end() const
 {
     if (_current >= _tokens.size()) {
         return true;
     }
-    return _tokens[_current].kind == TokenKind::TOKEN_EOF;
+    return _tokens[_current].kind == lx::TokenKind::TOKEN_EOF;
 }
 
-const cplus::Token &cplus::AbstractSyntaxTree::_peek() const
+const cplus::lx::Token &cplus::ast::AbstractSyntaxTree::_peek() const
 {
     if (_current >= _tokens.size()) {
-        static const Token eof_token{TokenKind::TOKEN_EOF, "", 0, 0};
+        static const lx::Token eof_token{lx::TokenKind::TOKEN_EOF, "", 0, 0};
         return eof_token;
     }
     return _tokens[_current];
 }
 
-const cplus::Token &cplus::AbstractSyntaxTree::_previous() const
+const cplus::lx::Token &cplus::ast::AbstractSyntaxTree::_previous() const
 {
     if (_current == 0) {
-        static const Token start_token{TokenKind::TOKEN_EOF, "", 0, 0};
+        static const lx::Token start_token{lx::TokenKind::TOKEN_EOF, "", 0, 0};
         return start_token;
     }
     return _tokens[_current - 1];
 }
 
-const cplus::Token &cplus::AbstractSyntaxTree::_advance()
+const cplus::lx::Token &cplus::ast::AbstractSyntaxTree::_advance()
 {
     if (!_is_at_end()) {
         ++_current;
@@ -59,7 +59,7 @@ const cplus::Token &cplus::AbstractSyntaxTree::_advance()
     return _previous();
 }
 
-const cplus::Token &cplus::AbstractSyntaxTree::_consume(TokenKind kind, const std::string &message)
+const cplus::lx::Token &cplus::ast::AbstractSyntaxTree::_consume(lx::TokenKind kind, const std::string &message)
 {
     if (_check(kind)) {
         return _advance();
@@ -70,7 +70,7 @@ const cplus::Token &cplus::AbstractSyntaxTree::_consume(TokenKind kind, const st
         std::to_string(current.column));
 }
 
-bool cplus::AbstractSyntaxTree::_check(TokenKind kind) const
+bool cplus::ast::AbstractSyntaxTree::_check(lx::TokenKind kind) const
 {
     if (_current >= _tokens.size()) {
         return false;
@@ -78,7 +78,7 @@ bool cplus::AbstractSyntaxTree::_check(TokenKind kind) const
     return _tokens[_current].kind == kind;
 }
 
-bool cplus::AbstractSyntaxTree::_check(TokenKind kind, u64 offset) const
+bool cplus::ast::AbstractSyntaxTree::_check(lx::TokenKind kind, u64 offset) const
 {
     if (_current + offset >= _tokens.size()) {
         return false;
@@ -86,7 +86,7 @@ bool cplus::AbstractSyntaxTree::_check(TokenKind kind, u64 offset) const
     return _tokens[_current + offset].kind == kind;
 }
 
-bool cplus::AbstractSyntaxTree::_match(const std::initializer_list<TokenKind> &kinds)
+bool cplus::ast::AbstractSyntaxTree::_match(const std::initializer_list<lx::TokenKind> &kinds)
 {
     for (const auto &kind : kinds) {
         if (_check(kind)) {
@@ -97,20 +97,20 @@ bool cplus::AbstractSyntaxTree::_match(const std::initializer_list<TokenKind> &k
     return false;
 }
 
-void cplus::AbstractSyntaxTree::_synchronize()
+void cplus::ast::AbstractSyntaxTree::_synchronize()
 {
     while (!_is_at_end()) {
-        if (_previous().kind == TokenKind::TOKEN_SEMICOLON || _peek().kind == TokenKind::TOKEN_CLOSE_BRACE) {
+        if (_previous().kind == lx::TokenKind::TOKEN_SEMICOLON || _peek().kind == lx::TokenKind::TOKEN_CLOSE_BRACE) {
             return;
         }
         switch (_peek().kind) {
-            case TokenKind::TOKEN_DEF:
-            case TokenKind::TOKEN_CONST:
-            case TokenKind::TOKEN_IF:
-            case TokenKind::TOKEN_FOR:
-            case TokenKind::TOKEN_FOREACH:
-            case TokenKind::TOKEN_CASE:
-            case TokenKind::TOKEN_RETURN:
+            case lx::TokenKind::TOKEN_DEF:
+            case lx::TokenKind::TOKEN_CONST:
+            case lx::TokenKind::TOKEN_IF:
+            case lx::TokenKind::TOKEN_FOR:
+            case lx::TokenKind::TOKEN_FOREACH:
+            case lx::TokenKind::TOKEN_CASE:
+            case lx::TokenKind::TOKEN_RETURN:
                 return;
             default:
                 _advance();
@@ -122,10 +122,10 @@ void cplus::AbstractSyntaxTree::_synchronize()
 * private
 */
 
-std::unique_ptr<cplus::ast::Module> cplus::AbstractSyntaxTree::_parse_module()
+std::unique_ptr<cplus::ast::Module> cplus::ast::AbstractSyntaxTree::_parse_module()
 {
-    auto module = ast::make<ast::Module>();
-    const auto module_name = _consume(TokenKind::TOKEN_MODULE, "Lexical error, expected 'module'");
+    auto module = make<Module>();
+    const auto module_name = _consume(lx::TokenKind::TOKEN_MODULE, "Lexical error, expected 'module'");
 
     module->name = std::move(module_name.lexeme);
     _module = module->name.c_str();
@@ -142,14 +142,14 @@ std::unique_ptr<cplus::ast::Module> cplus::AbstractSyntaxTree::_parse_module()
     return module;
 }
 
-cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_declaration()
+cplus::ast::StatementPtr cplus::ast::AbstractSyntaxTree::_parse_declaration()
 {
     try {
 
-        if (_match({TokenKind::TOKEN_DEF})) {
+        if (_match({lx::TokenKind::TOKEN_DEF})) {
             return _parse_function_declaration();
         }
-        if (_match({TokenKind::TOKEN_CONST})) {
+        if (_match({lx::TokenKind::TOKEN_CONST})) {
             return _parse_variable_declaration(true, true);
         }
 
@@ -176,33 +176,33 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_declaration()
 *     return add(5, 10);
 * }
 */
-cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_function_declaration()
+cplus::ast::StatementPtr cplus::ast::AbstractSyntaxTree::_parse_function_declaration()
 {
-    const auto name = _consume(TokenKind::TOKEN_IDENTIFIER, "Expected function name");
-    auto func = ast::make<ast::FunctionDeclaration>(name.lexeme);
+    const auto name = _consume(lx::TokenKind::TOKEN_IDENTIFIER, "Expected function name");
+    auto func = make<FunctionDeclaration>(name.lexeme);
 
     func->line = name.line;
     func->column = name.column;
 
-    _consume(TokenKind::TOKEN_OPEN_PAREN, "Expected '(' after function name");
+    _consume(lx::TokenKind::TOKEN_OPEN_PAREN, "Expected '(' after function name");
 
-    if (!_check(TokenKind::TOKEN_CLOSE_PAREN)) {
+    if (!_check(lx::TokenKind::TOKEN_CLOSE_PAREN)) {
 
         do {
-            const auto param_name = _consume(TokenKind::TOKEN_IDENTIFIER, "Expected parameter name");
+            const auto param_name = _consume(lx::TokenKind::TOKEN_IDENTIFIER, "Expected parameter name");
 
-            ast::TypePtr param_type = nullptr;
-            if (_match({TokenKind::TOKEN_COLON})) {
+            TypePtr param_type = nullptr;
+            if (_match({lx::TokenKind::TOKEN_COLON})) {
                 param_type = _parse_type();
             }
 
             func->parameters.emplace_back(param_name.lexeme, std::move(param_type));
-        } while (_match({TokenKind::TOKEN_COMMA}));
+        } while (_match({lx::TokenKind::TOKEN_COMMA}));
     }
 
-    _consume(TokenKind::TOKEN_CLOSE_PAREN, "Expected ')' after parameters");
+    _consume(lx::TokenKind::TOKEN_CLOSE_PAREN, "Expected ')' after parameters");
 
-    if (_match({TokenKind::TOKEN_ARROW})) {
+    if (_match({lx::TokenKind::TOKEN_ARROW})) {
         func->return_type = _parse_type();
     }
 
@@ -222,33 +222,33 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_function_declaration(
 *
 * @note type is inferred from initializer if not explicitly provided
 */
-cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_variable_declaration(bool is_const, bool expect_semicolon = true)
+cplus::ast::StatementPtr cplus::ast::AbstractSyntaxTree::_parse_variable_declaration(bool is_const, bool expect_semicolon = true)
 {
-    const auto name = _consume(TokenKind::TOKEN_IDENTIFIER, "Expected variable name");
-    auto var_decl = ast::make<ast::VariableDeclaration>(name.lexeme, is_const);
+    const auto name = _consume(lx::TokenKind::TOKEN_IDENTIFIER, "Expected variable name");
+    auto var_decl = make<VariableDeclaration>(name.lexeme, is_const);
 
     var_decl->line = name.line;
     var_decl->column = name.column;
 
-    if (_match({TokenKind::TOKEN_COLON})) {
+    if (_match({lx::TokenKind::TOKEN_COLON})) {
         var_decl->declared_type = _parse_type();
     }
-    if (_match({TokenKind::TOKEN_ASSIGN})) {
+    if (_match({lx::TokenKind::TOKEN_ASSIGN})) {
         var_decl->initializer = _parse_expression();
     }
 
     if (expect_semicolon) {
-        _consume(TokenKind::TOKEN_SEMICOLON, "Expected ';' after variable declaration");
+        _consume(lx::TokenKind::TOKEN_SEMICOLON, "Expected ';' after variable declaration");
     }
     return var_decl;
 }
 
-cplus::ast::TypePtr cplus::AbstractSyntaxTree::_parse_type()
+cplus::ast::TypePtr cplus::ast::AbstractSyntaxTree::_parse_type()
 {
-    const auto type_token = _consume(TokenKind::TOKEN_IDENTIFIER, "Expected type name");
-    ast::Type::Kind kind = ast::from_string(type_token.lexeme);
+    const auto type_token = _consume(lx::TokenKind::TOKEN_IDENTIFIER, "Expected type name");
+    Type::Kind kind = from_string(type_token.lexeme);
 
-    return ast::make<ast::Type>(kind, type_token.lexeme);
+    return make<Type>(kind, type_token.lexeme);
 }
 
 /**
@@ -290,30 +290,30 @@ cplus::ast::TypePtr cplus::AbstractSyntaxTree::_parse_type()
 * var_name: type = initializer;
 *
 */
-cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_statement()
+cplus::ast::StatementPtr cplus::ast::AbstractSyntaxTree::_parse_statement()
 {
-    if (_match({TokenKind::TOKEN_IF})) {
+    if (_match({lx::TokenKind::TOKEN_IF})) {
         return _parse_if_statement();
     }
-    if (_match({TokenKind::TOKEN_FOR})) {
+    if (_match({lx::TokenKind::TOKEN_FOR})) {
         return _parse_for_statement();
     }
-    if (_match({TokenKind::TOKEN_FOREACH})) {
+    if (_match({lx::TokenKind::TOKEN_FOREACH})) {
         return _parse_foreach_statement();
     }
-    if (_match({TokenKind::TOKEN_CASE})) {
+    if (_match({lx::TokenKind::TOKEN_CASE})) {
         return _parse_case_statement();
     }
-    if (_match({TokenKind::TOKEN_RETURN})) {
+    if (_match({lx::TokenKind::TOKEN_RETURN})) {
         return _parse_return_statement();
     }
-    if (_check(TokenKind::TOKEN_OPEN_BRACE)) {
+    if (_check(lx::TokenKind::TOKEN_OPEN_BRACE)) {
         return _parse_block_statement();
     }
-    if (_check(TokenKind::TOKEN_IDENTIFIER)) {
+    if (_check(lx::TokenKind::TOKEN_IDENTIFIER)) {
         const u64 pos = _current;
         _advance();
-        if (_check(TokenKind::TOKEN_COLON) || _check(TokenKind::TOKEN_ASSIGN)) {
+        if (_check(lx::TokenKind::TOKEN_COLON) || _check(lx::TokenKind::TOKEN_ASSIGN)) {
             _current = pos;
             return _parse_variable_declaration(false, true);
         }
@@ -333,20 +333,20 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_statement()
  *   ...
  * }
  */
-cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_block_statement()
+cplus::ast::StatementPtr cplus::ast::AbstractSyntaxTree::_parse_block_statement()
 {
-    _consume(TokenKind::TOKEN_OPEN_BRACE, "Expected '{'");
+    _consume(lx::TokenKind::TOKEN_OPEN_BRACE, "Expected '{'");
 
-    auto block = ast::make<ast::BlockStatement>();
+    auto block = make<BlockStatement>();
 
-    while (!_check(TokenKind::TOKEN_CLOSE_BRACE) && !_is_at_end()) {
+    while (!_check(lx::TokenKind::TOKEN_CLOSE_BRACE) && !_is_at_end()) {
 
         if (auto stmt = _parse_declaration()) {
             block->statements.push_back(std::move(stmt));
         }
     }
 
-    _consume(TokenKind::TOKEN_CLOSE_BRACE, "Expected '}'");
+    _consume(lx::TokenKind::TOKEN_CLOSE_BRACE, "Expected '}'");
     return block;
 }
 
@@ -360,18 +360,18 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_block_statement()
  *     print("negative");
  * }
  */
-cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_if_statement()
+cplus::ast::StatementPtr cplus::ast::AbstractSyntaxTree::_parse_if_statement()
 {
-    while (_match({TokenKind::TOKEN_OPEN_PAREN}) && _check(TokenKind::TOKEN_CLOSE_PAREN))
+    while (_match({lx::TokenKind::TOKEN_OPEN_PAREN}) && _check(lx::TokenKind::TOKEN_CLOSE_PAREN))
         ;
     auto condition = _parse_expression();
-    while (_match({TokenKind::TOKEN_CLOSE_PAREN}) && _check(TokenKind::TOKEN_CLOSE_PAREN))
+    while (_match({lx::TokenKind::TOKEN_CLOSE_PAREN}) && _check(lx::TokenKind::TOKEN_CLOSE_PAREN))
         ;
 
     auto then_stmt = _parse_statement();
-    auto if_stmt = ast::make<ast::IfStatement>(std::move(condition), std::move(then_stmt));
+    auto if_stmt = make<IfStatement>(std::move(condition), std::move(then_stmt));
 
-    if (_match({TokenKind::TOKEN_ELSE})) {
+    if (_match({lx::TokenKind::TOKEN_ELSE})) {
         if_stmt->else_statement = _parse_statement();
     }
 
@@ -393,44 +393,44 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_if_statement()
 *
 * @note the parentheses are sugar syntax, they can be omitted if not needed
 */
-cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_for_statement()
+cplus::ast::StatementPtr cplus::ast::AbstractSyntaxTree::_parse_for_statement()
 {
-    auto for_stmt = ast::make<ast::ForStatement>();
-    const bool has_paren = _match({TokenKind::TOKEN_OPEN_PAREN});
+    auto for_stmt = make<ForStatement>();
+    const bool has_paren = _match({lx::TokenKind::TOKEN_OPEN_PAREN});
 
-    if (!_check(TokenKind::TOKEN_SEMICOLON)) {
+    if (!_check(lx::TokenKind::TOKEN_SEMICOLON)) {
 
-        if (_check(TokenKind::TOKEN_IDENTIFIER)) {
+        if (_check(lx::TokenKind::TOKEN_IDENTIFIER)) {
             const u64 pos = _current;
             _advance();
 
-            if (_check(TokenKind::TOKEN_COLON) || _check(TokenKind::TOKEN_ASSIGN)) {
+            if (_check(lx::TokenKind::TOKEN_COLON) || _check(lx::TokenKind::TOKEN_ASSIGN)) {
                 _current = pos;
                 for_stmt->initializer = _parse_variable_declaration(false, false);
             } else {
                 _current = pos;
-                for_stmt->initializer = ast::make<ast::ExpressionStatement>(_parse_expression());
+                for_stmt->initializer = make<ExpressionStatement>(_parse_expression());
             }
 
         } else {
-            for_stmt->initializer = ast::make<ast::ExpressionStatement>(_parse_expression());
+            for_stmt->initializer = make<ExpressionStatement>(_parse_expression());
         }
     }
 
-    _consume(TokenKind::TOKEN_SEMICOLON, "Expected ';' after for loop initializer");
+    _consume(lx::TokenKind::TOKEN_SEMICOLON, "Expected ';' after for loop initializer");
 
-    if (!_check(TokenKind::TOKEN_SEMICOLON)) {
+    if (!_check(lx::TokenKind::TOKEN_SEMICOLON)) {
         for_stmt->condition = _parse_expression();
     }
 
-    _consume(TokenKind::TOKEN_SEMICOLON, "Expected ';' after for loop condition");
+    _consume(lx::TokenKind::TOKEN_SEMICOLON, "Expected ';' after for loop condition");
 
-    if (!_check(TokenKind::TOKEN_OPEN_BRACE) && !(has_paren && _check(TokenKind::TOKEN_CLOSE_PAREN))) {
+    if (!_check(lx::TokenKind::TOKEN_OPEN_BRACE) && !(has_paren && _check(lx::TokenKind::TOKEN_CLOSE_PAREN))) {
         for_stmt->increment = _parse_expression();
     }
 
     if (has_paren) {
-        _consume(TokenKind::TOKEN_CLOSE_PAREN, "Expected ')' after for loop increment");
+        _consume(lx::TokenKind::TOKEN_CLOSE_PAREN, "Expected ')' after for loop increment");
     }
 
     for_stmt->body = _parse_statement();
@@ -453,22 +453,22 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_for_statement()
 *
 * better than for (i = 0; i < collection.size(); ++i) {print(collection[i]);}
 */
-cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_foreach_statement()
+cplus::ast::StatementPtr cplus::ast::AbstractSyntaxTree::_parse_foreach_statement()
 {
-    const bool has_paren = _match({TokenKind::TOKEN_OPEN_PAREN});
-    const auto iterator_token = _consume(TokenKind::TOKEN_IDENTIFIER, "Expected iterator name in foreach");
+    const bool has_paren = _match({lx::TokenKind::TOKEN_OPEN_PAREN});
+    const auto iterator_token = _consume(lx::TokenKind::TOKEN_IDENTIFIER, "Expected iterator name in foreach");
 
-    _consume(TokenKind::TOKEN_IN, "Expected 'in' after iterator in foreach");
+    _consume(lx::TokenKind::TOKEN_IN, "Expected 'in' after iterator in foreach");
 
     auto iterable = _parse_expression();
 
     if (has_paren) {
-        _consume(TokenKind::TOKEN_CLOSE_PAREN, "Expected ')' after foreach expression");
+        _consume(lx::TokenKind::TOKEN_CLOSE_PAREN, "Expected ')' after foreach expression");
     }
 
     auto body = _parse_statement();
 
-    return ast::make<ast::ForeachStatement>(iterator_token.lexeme, std::move(iterable), std::move(body));
+    return make<ForeachStatement>(iterator_token.lexeme, std::move(iterable), std::move(body));
 }
 
 /**
@@ -483,22 +483,22 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_foreach_statement()
 *
 * like a switch case, this is faster than multiple if-else if statements
 */
-cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_case_statement()
+cplus::ast::StatementPtr cplus::ast::AbstractSyntaxTree::_parse_case_statement()
 {
-    _consume(TokenKind::TOKEN_OPEN_PAREN, "Expected '(' after 'case'");
+    _consume(lx::TokenKind::TOKEN_OPEN_PAREN, "Expected '(' after 'case'");
     auto expression = _parse_expression();
-    _consume(TokenKind::TOKEN_CLOSE_PAREN, "Expected ')' after case expression");
-    _consume(TokenKind::TOKEN_OPEN_BRACE, "Expected '{' before case clauses");
+    _consume(lx::TokenKind::TOKEN_CLOSE_PAREN, "Expected ')' after case expression");
+    _consume(lx::TokenKind::TOKEN_OPEN_BRACE, "Expected '{' before case clauses");
 
-    auto case_stmt = ast::make<ast::CaseStatement>(std::move(expression));
+    auto case_stmt = make<CaseStatement>(std::move(expression));
 
-    while (!_check(TokenKind::TOKEN_CLOSE_BRACE) && !_is_at_end()) {
-        ast::CaseStatement::CaseClause clause;
-        clause.value = _match({TokenKind::TOKEN_DEFAULT}) ? nullptr : _parse_expression();
-        _consume(TokenKind::TOKEN_COLON, "Expected ':' after case value");
+    while (!_check(lx::TokenKind::TOKEN_CLOSE_BRACE) && !_is_at_end()) {
+        CaseStatement::CaseClause clause;
+        clause.value = _match({lx::TokenKind::TOKEN_DEFAULT}) ? nullptr : _parse_expression();
+        _consume(lx::TokenKind::TOKEN_COLON, "Expected ':' after case value");
 
-        while (!_check(TokenKind::TOKEN_CLOSE_BRACE) && !_is_at_end()
-            && !(_check(TokenKind::TOKEN_INTEGER) || _check(TokenKind::TOKEN_DEFAULT))) {
+        while (!_check(lx::TokenKind::TOKEN_CLOSE_BRACE) && !_is_at_end()
+            && !(_check(lx::TokenKind::TOKEN_INTEGER) || _check(lx::TokenKind::TOKEN_DEFAULT))) {
             if (auto stmt = _parse_declaration()) {
                 clause.statements.push_back(std::move(stmt));
             }
@@ -506,7 +506,7 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_case_statement()
         case_stmt->clauses.push_back(std::move(clause));
     }
 
-    _consume(TokenKind::TOKEN_CLOSE_BRACE, "Expected '}' after case clauses");
+    _consume(lx::TokenKind::TOKEN_CLOSE_BRACE, "Expected '}' after case clauses");
     return case_stmt;
 }
 
@@ -519,28 +519,28 @@ cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_case_statement()
 *     return 84;
 * }
 */
-cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_return_statement()
+cplus::ast::StatementPtr cplus::ast::AbstractSyntaxTree::_parse_return_statement()
 {
     cplus::ast::ExpressionPtr value = nullptr;
 
-    if (!_check(TokenKind::TOKEN_SEMICOLON)) {
+    if (!_check(lx::TokenKind::TOKEN_SEMICOLON)) {
         value = _parse_expression();
     }
 
-    _consume(TokenKind::TOKEN_SEMICOLON, "Expected ';' after return value");
+    _consume(lx::TokenKind::TOKEN_SEMICOLON, "Expected ';' after return value");
 
-    return ast::make<ast::ReturnStatement>(std::move(value));
+    return make<ReturnStatement>(std::move(value));
 }
 
-cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_expression_statement()
+cplus::ast::StatementPtr cplus::ast::AbstractSyntaxTree::_parse_expression_statement()
 {
     auto expr = _parse_expression();
-    _consume(TokenKind::TOKEN_SEMICOLON, "Expected ';' after expression");
+    _consume(lx::TokenKind::TOKEN_SEMICOLON, "Expected ';' after expression");
 
-    return ast::make<ast::ExpressionStatement>(std::move(expr));
+    return make<ExpressionStatement>(std::move(expr));
 }
 
-cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_expression()
+cplus::ast::ExpressionPtr cplus::ast::AbstractSyntaxTree::_parse_expression()
 {
     return _parse_logical_or();
 }
@@ -551,14 +551,14 @@ cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_expression()
 *
 * if (a > 0 || b < 0) { ... }
 */
-cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_logical_or()
+cplus::ast::ExpressionPtr cplus::ast::AbstractSyntaxTree::_parse_logical_or()
 {
     auto expr = _parse_logical_and();
 
-    while (_match({TokenKind::TOKEN_CMP_OR})) {
-        auto op = ast::BinaryExpression::OR;
+    while (_match({lx::TokenKind::TOKEN_CMP_OR})) {
+        auto op = BinaryExpression::OR;
         auto right = _parse_logical_and();
-        expr = ast::make<ast::BinaryExpression>(std::move(expr), op, std::move(right));
+        expr = make<BinaryExpression>(std::move(expr), op, std::move(right));
     }
 
     return expr;
@@ -570,14 +570,14 @@ cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_logical_or()
 *
 * if (a > 0 && b < 0) { ... }
 */
-cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_logical_and()
+cplus::ast::ExpressionPtr cplus::ast::AbstractSyntaxTree::_parse_logical_and()
 {
     auto expr = _parse_equality();
 
-    while (_match({TokenKind::TOKEN_CMP_AND})) {
-        auto op = ast::BinaryExpression::AND;
+    while (_match({lx::TokenKind::TOKEN_CMP_AND})) {
+        auto op = BinaryExpression::AND;
         auto right = _parse_equality();
-        expr = ast::make<ast::BinaryExpression>(std::move(expr), op, std::move(right));
+        expr = make<BinaryExpression>(std::move(expr), op, std::move(right));
     }
 
     return expr;
@@ -591,14 +591,14 @@ cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_logical_and()
 * if (expression == expression) { ... }
 * if (expression != expression) { ... }
 */
-cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_equality()
+cplus::ast::ExpressionPtr cplus::ast::AbstractSyntaxTree::_parse_equality()
 {
     auto expr = _parse_comparison();
 
-    while (_match({TokenKind::TOKEN_EQ, TokenKind::TOKEN_NEQ})) {
-        auto op = (_previous().kind == TokenKind::TOKEN_EQ) ? ast::BinaryExpression::EQ : ast::BinaryExpression::NEQ;
+    while (_match({lx::TokenKind::TOKEN_EQ, lx::TokenKind::TOKEN_NEQ})) {
+        auto op = (_previous().kind == lx::TokenKind::TOKEN_EQ) ? BinaryExpression::EQ : BinaryExpression::NEQ;
         auto right = _parse_comparison();
-        expr = ast::make<ast::BinaryExpression>(std::move(expr), op, std::move(right));
+        expr = make<BinaryExpression>(std::move(expr), op, std::move(right));
     }
 
     return expr;
@@ -616,24 +616,24 @@ cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_equality()
 * if (a < b) { ... }
 * if (a <= b) { ... }
 */
-cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_comparison()
+cplus::ast::ExpressionPtr cplus::ast::AbstractSyntaxTree::_parse_comparison()
 {
     auto expr = _parse_term();
 
-    while (_match({TokenKind::TOKEN_GT, TokenKind::TOKEN_GTE, TokenKind::TOKEN_LT, TokenKind::TOKEN_LTE})) {
-        ast::BinaryExpression::Operator op;
+    while (_match({lx::TokenKind::TOKEN_GT, lx::TokenKind::TOKEN_GTE, lx::TokenKind::TOKEN_LT, lx::TokenKind::TOKEN_LTE})) {
+        BinaryExpression::Operator op;
         switch (_previous().kind) {
-            case TokenKind::TOKEN_GT:
-                op = ast::BinaryExpression::GT;
+            case lx::TokenKind::TOKEN_GT:
+                op = BinaryExpression::GT;
                 break;
-            case TokenKind::TOKEN_GTE:
-                op = ast::BinaryExpression::GTE;
+            case lx::TokenKind::TOKEN_GTE:
+                op = BinaryExpression::GTE;
                 break;
-            case TokenKind::TOKEN_LT:
-                op = ast::BinaryExpression::LT;
+            case lx::TokenKind::TOKEN_LT:
+                op = BinaryExpression::LT;
                 break;
-            case TokenKind::TOKEN_LTE:
-                op = ast::BinaryExpression::LTE;
+            case lx::TokenKind::TOKEN_LTE:
+                op = BinaryExpression::LTE;
                 break;
             default:
                 throw exception::Error("AbstractSyntaxTree::_parse_comparison", "Unknown comparison operator at ",
@@ -642,7 +642,7 @@ cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_comparison()
         }
 
         auto right = _parse_term();
-        expr = ast::make<ast::BinaryExpression>(std::move(expr), op, std::move(right));
+        expr = make<BinaryExpression>(std::move(expr), op, std::move(right));
     }
 
     return expr;
@@ -655,14 +655,14 @@ cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_comparison()
 *
 * a + b - c
 */
-cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_term()
+cplus::ast::ExpressionPtr cplus::ast::AbstractSyntaxTree::_parse_term()
 {
     auto expr = _parse_factor();
 
-    while (_match({TokenKind::TOKEN_MINUS, TokenKind::TOKEN_PLUS})) {
-        auto op = (_previous().kind == TokenKind::TOKEN_MINUS) ? ast::BinaryExpression::SUB : ast::BinaryExpression::ADD;
+    while (_match({lx::TokenKind::TOKEN_MINUS, lx::TokenKind::TOKEN_PLUS})) {
+        auto op = (_previous().kind == lx::TokenKind::TOKEN_MINUS) ? BinaryExpression::SUB : BinaryExpression::ADD;
         auto right = _parse_factor();
-        expr = ast::make<ast::BinaryExpression>(std::move(expr), op, std::move(right));
+        expr = make<BinaryExpression>(std::move(expr), op, std::move(right));
     }
 
     return expr;
@@ -676,21 +676,21 @@ cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_term()
 *
 * if (a * b / c % d) { ... }
 */
-cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_factor()
+cplus::ast::ExpressionPtr cplus::ast::AbstractSyntaxTree::_parse_factor()
 {
     auto expr = _parse_unary();
 
-    while (_match({TokenKind::TOKEN_SLASH, TokenKind::TOKEN_ASTERISK, TokenKind::TOKEN_MODULO})) {
-        ast::BinaryExpression::Operator op;
+    while (_match({lx::TokenKind::TOKEN_SLASH, lx::TokenKind::TOKEN_ASTERISK, lx::TokenKind::TOKEN_MODULO})) {
+        BinaryExpression::Operator op;
         switch (_previous().kind) {
-            case TokenKind::TOKEN_SLASH:
-                op = ast::BinaryExpression::DIV;
+            case lx::TokenKind::TOKEN_SLASH:
+                op = BinaryExpression::DIV;
                 break;
-            case TokenKind::TOKEN_ASTERISK:
-                op = ast::BinaryExpression::MUL;
+            case lx::TokenKind::TOKEN_ASTERISK:
+                op = BinaryExpression::MUL;
                 break;
-            case TokenKind::TOKEN_MODULO:
-                op = ast::BinaryExpression::MOD;
+            case lx::TokenKind::TOKEN_MODULO:
+                op = BinaryExpression::MOD;
                 break;
             default:
                 throw exception::Error("AbstractSyntaxTree::_parse_factor", "Unknown factor operator at ", std::to_string(_previous().line),
@@ -699,7 +699,7 @@ cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_factor()
         }
 
         auto right = _parse_unary();
-        expr = ast::make<ast::BinaryExpression>(std::move(expr), op, std::move(right));
+        expr = make<BinaryExpression>(std::move(expr), op, std::move(right));
     }
 
     return expr;
@@ -711,25 +711,26 @@ cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_factor()
 * @syntax !expression
 * @syntax +expression
 */
-cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_unary()
+cplus::ast::ExpressionPtr cplus::ast::AbstractSyntaxTree::_parse_unary()
 {
-    if (_match({TokenKind::TOKEN_CMP_NOT, TokenKind::TOKEN_MINUS, TokenKind::TOKEN_PLUS, TokenKind::TOKEN_INC, TokenKind::TOKEN_DEC})) {
-        ast::UnaryExpression::Operator op;
+    if (_match({lx::TokenKind::TOKEN_CMP_NOT, lx::TokenKind::TOKEN_MINUS, lx::TokenKind::TOKEN_PLUS, lx::TokenKind::TOKEN_INC,
+            lx::TokenKind::TOKEN_DEC})) {
+        UnaryExpression::Operator op;
         switch (_previous().kind) {
-            case TokenKind::TOKEN_CMP_NOT:
-                op = ast::UnaryExpression::NOT;
+            case lx::TokenKind::TOKEN_CMP_NOT:
+                op = UnaryExpression::NOT;
                 break;
-            case TokenKind::TOKEN_MINUS:
-                op = ast::UnaryExpression::NEGATE;
+            case lx::TokenKind::TOKEN_MINUS:
+                op = UnaryExpression::NEGATE;
                 break;
-            case TokenKind::TOKEN_PLUS:
-                op = ast::UnaryExpression::PLUS;
+            case lx::TokenKind::TOKEN_PLUS:
+                op = UnaryExpression::PLUS;
                 break;
-            case TokenKind::TOKEN_INC:
-                op = ast::UnaryExpression::INC;
+            case lx::TokenKind::TOKEN_INC:
+                op = UnaryExpression::INC;
                 break;
-            case TokenKind::TOKEN_DEC:
-                op = ast::UnaryExpression::DEC;
+            case lx::TokenKind::TOKEN_DEC:
+                op = UnaryExpression::DEC;
                 break;
             default:
                 throw exception::Error("AbstractSyntaxTree::_parse_unary", "Unknown unary operator at ", std::to_string(_previous().line),
@@ -738,18 +739,18 @@ cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_unary()
         }
 
         auto right = _parse_unary();
-        return ast::make<ast::UnaryExpression>(op, std::move(right));
+        return make<UnaryExpression>(op, std::move(right));
     }
 
     return _parse_call();
 }
 
-cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_call()
+cplus::ast::ExpressionPtr cplus::ast::AbstractSyntaxTree::_parse_call()
 {
     auto expr = _parse_primary();
 
     for (;;) {
-        if (_match({TokenKind::TOKEN_OPEN_PAREN})) {
+        if (_match({lx::TokenKind::TOKEN_OPEN_PAREN})) {
             expr = _finish_call(std::move(expr));
             continue;
         }
@@ -759,69 +760,69 @@ cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_call()
     return expr;
 }
 
-cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_finish_call(cplus::ast::ExpressionPtr callee)
+cplus::ast::ExpressionPtr cplus::ast::AbstractSyntaxTree::_finish_call(cplus::ast::ExpressionPtr callee)
 {
-    auto identifier_expr = dynamic_cast<ast::IdentifierExpression *>(callee.get());
+    auto identifier_expr = dynamic_cast<IdentifierExpression *>(callee.get());
 
     if (!identifier_expr) {
-        throw cplus::exception::Error("AbstractSyntaxTree::_finish_call", "Invalid function call");
+        throw exception::Error("AbstractSyntaxTree::_finish_call", "Invalid function call");
     }
 
     const std::string_view function_name = identifier_expr->name;
-    auto call_expr = ast::make<ast::CallExpression>(function_name);
+    auto call_expr = make<CallExpression>(function_name);
 
-    if (!_check(TokenKind::TOKEN_CLOSE_PAREN)) {
+    if (!_check(lx::TokenKind::TOKEN_CLOSE_PAREN)) {
         do {
             call_expr->arguments.push_back(_parse_expression());
-        } while (_match({TokenKind::TOKEN_COMMA}));
+        } while (_match({lx::TokenKind::TOKEN_COMMA}));
     }
 
-    _consume(TokenKind::TOKEN_CLOSE_PAREN, "Expected ')' after arguments");
+    _consume(lx::TokenKind::TOKEN_CLOSE_PAREN, "Expected ')' after arguments");
     return call_expr;
 }
 
-cplus::ast::ExpressionPtr cplus::AbstractSyntaxTree::_parse_primary()
+cplus::ast::ExpressionPtr cplus::ast::AbstractSyntaxTree::_parse_primary()
 {
-    if (_match({TokenKind::TOKEN_INTEGER})) {
+    if (_match({lx::TokenKind::TOKEN_INTEGER})) {
         auto &token = _previous();
         const std::string str(token.lexeme);
-        i64 value = std::stoll(str);
-        return ast::make<ast::LiteralExpression>(value);
+        const i32 value = std::stoi(str);
+        return make<LiteralExpression>(value);
     }
 
-    if (_match({TokenKind::TOKEN_FLOAT})) {
+    if (_match({lx::TokenKind::TOKEN_FLOAT})) {
         auto &token = _previous();
         const std::string str(token.lexeme);
-        double value = std::stod(str);
-        return ast::make<ast::LiteralExpression>(value);
+        const float value = std::stof(str);
+        return make<LiteralExpression>(value);
     }
 
-    if (_match({TokenKind::TOKEN_STRING})) {
+    if (_match({lx::TokenKind::TOKEN_STRING})) {
         auto &token = _previous();
-        return ast::make<ast::LiteralExpression>(token.lexeme);
+        return make<LiteralExpression>(token.lexeme);
     }
 
-    if (_match({TokenKind::TOKEN_CHARACTER})) {
+    if (_match({lx::TokenKind::TOKEN_CHARACTER})) {
         auto &token = _previous();
-        return ast::make<ast::LiteralExpression>(token.lexeme);
+        return make<LiteralExpression>(token.lexeme);
     }
 
-    if (_match({TokenKind::TOKEN_IDENTIFIER})) {
+    if (_match({lx::TokenKind::TOKEN_IDENTIFIER})) {
         auto &token = _previous();
 
-        if (_match({TokenKind::TOKEN_ASSIGN})) {
+        if (_match({lx::TokenKind::TOKEN_ASSIGN})) {
             auto value = _parse_expression();
-            return ast::make<ast::AssignmentExpression>(token.lexeme, std::move(value));
+            return make<AssignmentExpression>(token.lexeme, std::move(value));
         }
 
-        return ast::make<ast::IdentifierExpression>(token.lexeme);
+        return make<IdentifierExpression>(token.lexeme);
     }
 
-    if (_match({TokenKind::TOKEN_OPEN_PAREN})) {
+    if (_match({lx::TokenKind::TOKEN_OPEN_PAREN})) {
         auto expr = _parse_expression();
-        _consume(TokenKind::TOKEN_CLOSE_PAREN, "Expected ')' after expression");
+        _consume(lx::TokenKind::TOKEN_CLOSE_PAREN, "Expected ')' after expression");
         return expr;
     }
 
-    throw cplus::exception::Error("AbstractSyntaxTree::_parse_primary", "Unexpected token: ", _peek().lexeme);
+    throw exception::Error("AbstractSyntaxTree::_parse_primary", "Unexpected token: ", _peek().lexeme);
 }

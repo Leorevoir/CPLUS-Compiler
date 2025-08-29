@@ -98,14 +98,14 @@ class Statement : public ASTNode
 class LiteralExpression : public Expression
 {
     public:
-        std::variant<i64, double, std::string_view, bool> value;
+        std::variant<i32, f32, std::string_view, bool> value;
 
-        inline LiteralExpression(i64 val) : value(val)
+        inline LiteralExpression(i32 val) : value(val)
         {
             /* __ctor__ */
         }
 
-        inline LiteralExpression(double val) : value(val)
+        inline LiteralExpression(f32 val) : value(val)
         {
             /* __ctor__ */
         }

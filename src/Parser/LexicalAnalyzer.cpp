@@ -6,24 +6,24 @@
 #include <unordered_map>
 
 // clang-format off
-static const std::unordered_map<std::string_view, cplus::TokenKind> keywords = {
-    {"def", cplus::TokenKind::TOKEN_DEF},
-    {"const", cplus::TokenKind::TOKEN_CONST},
-    {"return", cplus::TokenKind::TOKEN_RETURN},
-    {"struct", cplus::TokenKind::TOKEN_STRUCT},
+static const std::unordered_map<std::string_view, cplus::lx::TokenKind> keywords = {
+    {"def", cplus::lx::TokenKind::TOKEN_DEF},
+    {"const", cplus::lx::TokenKind::TOKEN_CONST},
+    {"return", cplus::lx::TokenKind::TOKEN_RETURN},
+    {"struct", cplus::lx::TokenKind::TOKEN_STRUCT},
 
-    {"if", cplus::TokenKind::TOKEN_IF},
-    {"elsif", cplus::TokenKind::TOKEN_ELSIF},
-    {"else", cplus::TokenKind::TOKEN_ELSE},
+    {"if", cplus::lx::TokenKind::TOKEN_IF},
+    {"elsif", cplus::lx::TokenKind::TOKEN_ELSIF},
+    {"else", cplus::lx::TokenKind::TOKEN_ELSE},
 
-    {"for", cplus::TokenKind::TOKEN_FOR},
-    {"foreach", cplus::TokenKind::TOKEN_FOREACH},
-    {"while", cplus::TokenKind::TOKEN_WHILE},
-    {"in", cplus::TokenKind::TOKEN_IN},
+    {"for", cplus::lx::TokenKind::TOKEN_FOR},
+    {"foreach", cplus::lx::TokenKind::TOKEN_FOREACH},
+    {"while", cplus::lx::TokenKind::TOKEN_WHILE},
+    {"in", cplus::lx::TokenKind::TOKEN_IN},
 
-    {"case", cplus::TokenKind::TOKEN_CASE},
-    {"when", cplus::TokenKind::TOKEN_WHEN},
-    {"default", cplus::TokenKind::TOKEN_DEFAULT},
+    {"case", cplus::lx::TokenKind::TOKEN_CASE},
+    {"when", cplus::lx::TokenKind::TOKEN_WHEN},
+    {"default", cplus::lx::TokenKind::TOKEN_DEFAULT},
 };
 // clang-format on
 
@@ -31,7 +31,7 @@ static const std::unordered_map<std::string_view, cplus::TokenKind> keywords = {
  * public
  */
 
-std::vector<cplus::Token> cplus::LexicalAnalyzer::run(const FileContent &source)
+std::vector<cplus::lx::Token> cplus::lx::LexicalAnalyzer::run(const FileContent &source)
 {
     _tokens.clear();
     _source = std::move(source.content);
@@ -65,7 +65,7 @@ std::vector<cplus::Token> cplus::LexicalAnalyzer::run(const FileContent &source)
  * private
  */
 
-void cplus::LexicalAnalyzer::_scan_token()
+void cplus::lx::LexicalAnalyzer::_scan_token()
 {
     const char c = _advance();
 
@@ -218,7 +218,7 @@ void cplus::LexicalAnalyzer::_scan_token()
     }
 }
 
-char cplus::LexicalAnalyzer::_advance()
+char cplus::lx::LexicalAnalyzer::_advance()
 {
     if (_is_at_end()) {
         return '\0';
@@ -227,7 +227,7 @@ char cplus::LexicalAnalyzer::_advance()
     return _source[_position++];
 }
 
-bool cplus::LexicalAnalyzer::_match(char expected)
+bool cplus::lx::LexicalAnalyzer::_match(char expected)
 {
     if (_is_at_end()) {
         return false;
@@ -240,7 +240,7 @@ bool cplus::LexicalAnalyzer::_match(char expected)
     return true;
 }
 
-char cplus::LexicalAnalyzer::_peek() const
+char cplus::lx::LexicalAnalyzer::_peek() const
 {
     if (_is_at_end()) {
         return '\0';
@@ -248,7 +248,7 @@ char cplus::LexicalAnalyzer::_peek() const
     return _source[_position];
 }
 
-char cplus::LexicalAnalyzer::_peek_next() const
+char cplus::lx::LexicalAnalyzer::_peek_next() const
 {
     if (_position + 1 >= _source.length()) {
         return '\0';
@@ -256,19 +256,19 @@ char cplus::LexicalAnalyzer::_peek_next() const
     return _source[_position + 1];
 }
 
-bool cplus::LexicalAnalyzer::_is_at_end() const
+bool cplus::lx::LexicalAnalyzer::_is_at_end() const
 {
     return _position >= _source.length();
 }
 
-void cplus::LexicalAnalyzer::_skip_line_comment()
+void cplus::lx::LexicalAnalyzer::_skip_line_comment()
 {
     while (_peek() != '\n' && !_is_at_end()) {
         _advance();
     }
 }
 
-void cplus::LexicalAnalyzer::_skip_block_comment()
+void cplus::lx::LexicalAnalyzer::_skip_block_comment()
 {
     while (!_is_at_end()) {
         if (_peek() == '*' && _peek_next() == '/') {
@@ -286,7 +286,7 @@ void cplus::LexicalAnalyzer::_skip_block_comment()
     }
 }
 
-void cplus::LexicalAnalyzer::_scan_number()
+void cplus::lx::LexicalAnalyzer::_scan_number()
 {
     const size_t start = _position - 1;
     bool is_float = false;
@@ -309,7 +309,7 @@ void cplus::LexicalAnalyzer::_scan_number()
     _add_token(is_float ? TokenKind::TOKEN_FLOAT : TokenKind::TOKEN_INTEGER, lexeme);
 }
 
-void cplus::LexicalAnalyzer::_scan_identifier()
+void cplus::lx::LexicalAnalyzer::_scan_identifier()
 {
     const size_t start = _position - 1;
 
@@ -325,7 +325,7 @@ void cplus::LexicalAnalyzer::_scan_identifier()
     _add_token(kind, lexeme);
 }
 
-void cplus::LexicalAnalyzer::_scan_string()
+void cplus::lx::LexicalAnalyzer::_scan_string()
 {
     const size_t start = _position - 1;
     const u64 start_line = _line;
@@ -357,7 +357,7 @@ void cplus::LexicalAnalyzer::_scan_string()
     _add_token(TokenKind::TOKEN_STRING, lexeme);
 }
 
-void cplus::LexicalAnalyzer::_scan_character()
+void cplus::lx::LexicalAnalyzer::_scan_character()
 {
     const size_t start = _position - 1;
     const u64 start_line = _line;
@@ -388,7 +388,7 @@ void cplus::LexicalAnalyzer::_scan_character()
     _add_token(TokenKind::TOKEN_CHARACTER, lexeme);
 }
 
-void cplus::LexicalAnalyzer::_add_token(TokenKind kind, std::string_view lexeme)
+void cplus::lx::LexicalAnalyzer::_add_token(TokenKind kind, std::string_view lexeme)
 {
     _tokens.push_back({.kind = kind, .lexeme = lexeme, .line = _line, .column = _column - lexeme.length()});
 }

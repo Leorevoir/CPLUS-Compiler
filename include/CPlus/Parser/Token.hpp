@@ -7,6 +7,8 @@
 
 namespace cplus {
 
+namespace lx {
+
 enum class TokenKind {
     TOKEN_MODULE,
     TOKEN_DEF,
@@ -208,5 +210,7 @@ static inline std::ostream &operator<<(std::ostream &os, const Token &token)
     return os << logger::CPLUS_MAGENTA << to_string(token.kind) << logger::CPLUS_RESET << "('" << logger::CPLUS_YELLOW << token.lexeme
               << logger::CPLUS_RESET << "') at " << token.line << ":" << token.column;
 }
+
+}// namespace lx
 
 }// namespace cplus

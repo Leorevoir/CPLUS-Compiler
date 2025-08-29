@@ -24,7 +24,6 @@ struct Symbol {
         /* __ctor__ */
     }
 };
-// clang-format on
 
 class Scope
 {
@@ -61,8 +60,7 @@ class Scope
             return parent ? parent->lookup(name) : nullptr;
         }
 };
-
-}// namespace st
+// clang-format on
 
 class SymbolTable : public CompilerPass<std::unique_ptr<ast::Module>, std::unique_ptr<ast::Module>>, public ast::ASTVisitor
 {
@@ -106,5 +104,7 @@ class SymbolTable : public CompilerPass<std::unique_ptr<ast::Module>, std::uniqu
         ast::TypePtr _infer_type(ast::Expression &expr);
         bool _is_compatible(const ast::Type *left, const ast::Type *right);
 };
+
+}// namespace st
 
 }// namespace cplus

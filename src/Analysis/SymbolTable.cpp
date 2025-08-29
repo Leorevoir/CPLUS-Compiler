@@ -5,65 +5,24 @@
 #include <variant>
 
 /**
- * std
- */
-
-// clang-format off
-namespace cplus::stdlib {
-
-struct StdFunction {
-    std::string name;
-    ast::Type return_type;
-    std::vector<ast::Type> param_types;
-    bool is_variadic = false;
-};
-
-static const std::array<StdFunction, 8> STD_FUNCTIONS = {{
-    {"print", ast::Type::VOID, {ast::Type::AUTO},  true},
-    {"println", ast::Type::VOID, {ast::Type::AUTO},  true},
-    {"input", ast::Type::STRING, {ast::Type::STRING},  false},
-    {"int", ast::Type::INT, {ast::Type::AUTO},  false},
-    {"float", ast::Type::FLOAT, {ast::Type::AUTO},  false},
-    {"string", ast::Type::STRING, {ast::Type::AUTO}, false},
-    {"sqrt", ast::Type::FLOAT, {ast::Type::FLOAT},  false},
-    {"abs", ast::Type::INT, {ast::Type::INT}, false}
-}};
-
-struct StdConstant {
-    std::string name;
-    ast::Type type;
-    bool is_const = true;
-};
-
-static const std::array<StdConstant, 4> STD_CONSTANTS = {{
-    {"PI", ast::Type::FLOAT, true},
-    {"E", ast::Type::FLOAT, true},
-    {"EPSILON", ast::Type::FLOAT, true},
-    {"MAX_INT", ast::Type::INT, true}
-}};
-
-}// namespace cplus::stdlib
-// clang-format on
-
-/**
 * public
 */
 
-inline std::unique_ptr<cplus::ast::Module> cplus::SymbolTable::run(const std::unique_ptr<ast::Module> &module)
+std::unique_ptr<cplus::ast::Module> cplus::st::SymbolTable::run(const std::unique_ptr<ast::Module> &module)
 {
     _module = module->name.c_str();
     if (cplus_flags & FLAG_DEBUG) {
         logger::info("SymbolTable::run ", "Building symbol table for module: ", _module);
     }
 
-    // _enter_scope();
-    // _add_standard_library();
     _enter_scope();
-
     module->accept(*this);
-
     _exit_scope();
-    // _exit_scope();
+
+    if (!_scope_stack.empty()) {
+        throw exception::Error("SymbolTable::run", "Scope stack not empty after processing module: ", _module);
+    }
+
     return std::move(const_cast<std::unique_ptr<ast::Module> &>(module));
 }
 
@@ -98,36 +57,7 @@ static cplus::ast::TypePtr _make_type(const cplus::ast::Type::Kind k)
  * private
  */
 
-void cplus::SymbolTable::_add_standard_library()
-{
-    _current_scope->symbols.reserve(stdlib::STD_FUNCTIONS.size() + stdlib::STD_CONSTANTS.size());
-
-    for (const auto &std_func : stdlib::STD_FUNCTIONS) {
-        auto return_type = _make_type(std_func.return_type.kind);
-
-        if (!_declare(std_func.name, st::Symbol::FUNCTION, std::move(return_type), false, 0, 0)) {
-            continue;
-        }
-
-        st::Symbol *sym = _lookup(std_func.name);
-
-        if (sym) {
-            sym->param_types.reserve(std_func.param_types.size());
-            for (const auto &ptype : std_func.param_types) {
-                sym->param_types.push_back(_make_type(ptype.kind));
-            }
-        }
-    }
-
-    for (const auto &std_const : stdlib::STD_CONSTANTS) {
-        auto type = _make_type(std_const.type.kind);
-        const std::string name_copy = std_const.name;
-        auto symbol = std::make_unique<st::Symbol>(st::Symbol::VARIABLE, name_copy, std::move(type), std_const.is_const, 0, 0);
-        _current_scope->declare(std::move(name_copy), std::move(symbol));
-    }
-}
-
-inline void cplus::SymbolTable::_enter_scope()
+inline void cplus::st::SymbolTable::_enter_scope()
 {
     auto new_scope = std::make_unique<st::Scope>(_current_scope);
 
@@ -135,7 +65,7 @@ inline void cplus::SymbolTable::_enter_scope()
     _scope_stack.push_back(std::move(new_scope));
 }
 
-inline void cplus::SymbolTable::_exit_scope()
+inline void cplus::st::SymbolTable::_exit_scope()
 {
     if (!_scope_stack.empty()) {
         _scope_stack.pop_back();
@@ -143,7 +73,7 @@ inline void cplus::SymbolTable::_exit_scope()
     }
 }
 
-inline bool cplus::SymbolTable::_declare(const std::string &name, st::Symbol::Kind kind, ast::TypePtr type, bool is_const, u64 line,
+inline bool cplus::st::SymbolTable::_declare(const std::string &name, st::Symbol::Kind kind, ast::TypePtr type, bool is_const, u64 line,
     u64 column)
 {
     if (!_current_scope) {
@@ -154,7 +84,7 @@ inline bool cplus::SymbolTable::_declare(const std::string &name, st::Symbol::Ki
     return _current_scope->declare(name, std::move(symbol));
 }
 
-inline cplus::st::Symbol *cplus::SymbolTable::_lookup(const std::string &name)
+inline cplus::st::Symbol *cplus::st::SymbolTable::_lookup(const std::string &name)
 {
     return _current_scope ? _current_scope->lookup(name) : nullptr;
 }
@@ -163,14 +93,14 @@ inline cplus::st::Symbol *cplus::SymbolTable::_lookup(const std::string &name)
  * ast visit
  */
 
-inline void cplus::SymbolTable::visit(ast::Module &node)
+inline void cplus::st::SymbolTable::visit(ast::Module &node)
 {
     for (const auto &decl : node.declarations) {
         decl->accept(*this);
     }
 }
 
-inline void cplus::SymbolTable::visit(ast::FunctionDeclaration &node)
+inline void cplus::st::SymbolTable::visit(ast::FunctionDeclaration &node)
 {
     ast::TypePtr return_type =
         node.return_type ? ast::make<ast::Type>(node.return_type->kind, node.return_type->name) : ast::make<ast::Type>(ast::Type::VOID);
@@ -213,7 +143,7 @@ inline void cplus::SymbolTable::visit(ast::FunctionDeclaration &node)
     _return_type_stack.pop_back();
 }
 
-inline void cplus::SymbolTable::visit(ast::VariableDeclaration &node)
+inline void cplus::st::SymbolTable::visit(ast::VariableDeclaration &node)
 {
     ast::TypePtr var_type;
 
@@ -245,7 +175,7 @@ inline void cplus::SymbolTable::visit(ast::VariableDeclaration &node)
     }
 }
 
-inline void cplus::SymbolTable::visit(ast::IdentifierExpression &node)
+inline void cplus::st::SymbolTable::visit(ast::IdentifierExpression &node)
 {
     const st::Symbol *symbol = _lookup(std::string(node.name));
 
@@ -257,7 +187,7 @@ inline void cplus::SymbolTable::visit(ast::IdentifierExpression &node)
     node.type = ast::make<ast::Type>(symbol->type->kind, symbol->type->name);
 }
 
-inline void cplus::SymbolTable::visit(ast::BlockStatement &node)
+inline void cplus::st::SymbolTable::visit(ast::BlockStatement &node)
 {
     _enter_scope();
     for (const auto &stmt : node.statements) {
@@ -266,11 +196,11 @@ inline void cplus::SymbolTable::visit(ast::BlockStatement &node)
     _exit_scope();
 }
 
-inline void cplus::SymbolTable::visit(ast::LiteralExpression &node)
+inline void cplus::st::SymbolTable::visit(ast::LiteralExpression &node)
 {
-    if (std::holds_alternative<i64>(node.value)) {
+    if (std::holds_alternative<i32>(node.value)) {
         node.type = _make_type(ast::Type::INT);
-    } else if (std::holds_alternative<double>(node.value)) {
+    } else if (std::holds_alternative<f32>(node.value)) {
         node.type = _make_type(ast::Type::FLOAT);
     } else if (std::holds_alternative<std::string_view>(node.value)) {
         node.type = _make_type(ast::Type::STRING);
@@ -279,7 +209,7 @@ inline void cplus::SymbolTable::visit(ast::LiteralExpression &node)
     }
 }
 
-inline void cplus::SymbolTable::visit(ast::BinaryExpression &node)
+inline void cplus::st::SymbolTable::visit(ast::BinaryExpression &node)
 {
     node.left->accept(*this);
     node.right->accept(*this);
@@ -295,12 +225,12 @@ inline void cplus::SymbolTable::visit(ast::BinaryExpression &node)
     node.type = ast::make<ast::Type>(left_type->kind, left_type->name);
 }
 
-inline void cplus::SymbolTable::visit(ast::UnaryExpression &node)
+inline void cplus::st::SymbolTable::visit(ast::UnaryExpression &node)
 {
     node.operand->accept(*this);
 }
 
-inline void cplus::SymbolTable::visit(ast::CallExpression &node)
+inline void cplus::st::SymbolTable::visit(ast::CallExpression &node)
 {
     for (const auto &arg : node.arguments) {
         arg->accept(*this);
@@ -339,7 +269,7 @@ inline void cplus::SymbolTable::visit(ast::CallExpression &node)
     }
 }
 
-inline void cplus::SymbolTable::visit(ast::AssignmentExpression &node)
+inline void cplus::st::SymbolTable::visit(ast::AssignmentExpression &node)
 {
     node.value->accept(*this);
     const st::Symbol *symbol = _lookup(std::string(node.variable_name));
@@ -360,12 +290,12 @@ inline void cplus::SymbolTable::visit(ast::AssignmentExpression &node)
     node.type = ast::make<ast::Type>(dest->kind, dest->name);
 }
 
-inline void cplus::SymbolTable::visit(ast::ExpressionStatement &node)
+inline void cplus::st::SymbolTable::visit(ast::ExpressionStatement &node)
 {
     node.expression->accept(*this);
 }
 
-inline void cplus::SymbolTable::visit(ast::ReturnStatement &node)
+inline void cplus::st::SymbolTable::visit(ast::ReturnStatement &node)
 {
     if (_return_type_stack.empty()) {
         throw exception::Error("SymbolTable::visit", "Return statement outside of function in module: ", _module, " at ", node.line, ":",
@@ -396,7 +326,7 @@ inline void cplus::SymbolTable::visit(ast::ReturnStatement &node)
     }
 }
 
-inline void cplus::SymbolTable::visit(ast::IfStatement &node)
+inline void cplus::st::SymbolTable::visit(ast::IfStatement &node)
 {
     node.condition->accept(*this);
     node.then_statement->accept(*this);
@@ -405,7 +335,7 @@ inline void cplus::SymbolTable::visit(ast::IfStatement &node)
     }
 }
 
-inline void cplus::SymbolTable::visit(ast::ForStatement &node)
+inline void cplus::st::SymbolTable::visit(ast::ForStatement &node)
 {
     _enter_scope();
     if (node.initializer) {
@@ -423,7 +353,7 @@ inline void cplus::SymbolTable::visit(ast::ForStatement &node)
     _exit_scope();
 }
 
-inline void cplus::SymbolTable::visit(ast::ForeachStatement &node)
+inline void cplus::st::SymbolTable::visit(ast::ForeachStatement &node)
 {
     _enter_scope();
 
@@ -447,7 +377,7 @@ inline void cplus::SymbolTable::visit(ast::ForeachStatement &node)
     _exit_scope();
 }
 
-inline void cplus::SymbolTable::visit(ast::CaseStatement &node)
+inline void cplus::st::SymbolTable::visit(ast::CaseStatement &node)
 {
     node.expression->accept(*this);
     for (const auto &clause : node.clauses) {
@@ -460,16 +390,17 @@ inline void cplus::SymbolTable::visit(ast::CaseStatement &node)
     }
 }
 
-cplus::ast::TypePtr cplus::SymbolTable::_infer_type(ast::Expression &expr)
+cplus::ast::TypePtr cplus::st::SymbolTable::_infer_type(ast::Expression &expr)
 {
     if (expr.type) {
         return ast::make<ast::Type>(expr.type->kind, expr.type->name);
     }
 
+    //TODO: find a better way
     if (const auto lit = dynamic_cast<ast::LiteralExpression *>(&expr)) {
-        if (std::holds_alternative<i64>(lit->value)) {
+        if (std::holds_alternative<i32>(lit->value)) {
             return _make_type(ast::Type::INT);
-        } else if (std::holds_alternative<double>(lit->value)) {
+        } else if (std::holds_alternative<f32>(lit->value)) {
             return _make_type(ast::Type::FLOAT);
         } else if (std::holds_alternative<std::string_view>(lit->value)) {
             return _make_type(ast::Type::STRING);
@@ -499,7 +430,7 @@ cplus::ast::TypePtr cplus::SymbolTable::_infer_type(ast::Expression &expr)
     return ast::make<ast::Type>(ast::Type::AUTO);
 }
 
-inline bool cplus::SymbolTable::_is_compatible(const ast::Type *left, const ast::Type *right)
+inline bool cplus::st::SymbolTable::_is_compatible(const ast::Type *left, const ast::Type *right)
 {
     if (!left || !right) {
         return false;
