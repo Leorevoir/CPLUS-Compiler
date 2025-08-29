@@ -8,7 +8,8 @@
 cplus::CompilerDriver::CompilerDriver()
     : _pipeline(
         std::make_unique<LexicalAnalyzer>(),
-        std::make_unique<AbstractSyntaxTree>()
+        std::make_unique<AbstractSyntaxTree>(),
+        std::make_unique<SymbolTable>()
     )
 {
     /* __ctor__ */

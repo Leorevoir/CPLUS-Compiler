@@ -11,6 +11,10 @@ std::unique_ptr<cplus::ast::Program> cplus::AbstractSyntaxTree::run(const std::v
     _tokens = tokens;
     _current = 0;
 
+    if (cplus_flags & FLAG_DEBUG) {
+        logger::info("AbstractSyntaxTree::run ", "Parsing tokens to AST...");
+    }
+
     auto program = _parse_program();
 
     if (cplus_flags & FLAG_DEBUG) {
