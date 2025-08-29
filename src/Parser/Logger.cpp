@@ -78,6 +78,10 @@ void cplus::ast::ASTLogger::show(ASTNode &node)
     node.accept(*this);
 }
 
+/**
+* private
+*/
+
 void cplus::ast::ASTLogger::visit(LiteralExpression &node)
 {
     _out << logger::CPLUS_GREEN;
@@ -325,10 +329,6 @@ void cplus::ast::ASTLogger::visit(Program &node)
         decl->accept(*this);
     _pop();
 }
-
-/**
-* private
-*/
 
 void cplus::ast::ASTLogger::_show_indent(const std::string &text)
 {

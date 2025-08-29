@@ -13,6 +13,10 @@ class ASTLogger : public ASTVisitor
 
         void show(ASTNode &node);
 
+    private:
+        std::ostream &_out;
+        i32 _indent = 0;
+
         /** @brief expressions **/
         void visit(LiteralExpression &node) override;
         void visit(IdentifierExpression &node) override;
@@ -32,10 +36,6 @@ class ASTLogger : public ASTVisitor
         void visit(CaseStatement &node) override;
         void visit(FunctionDeclaration &node) override;
         void visit(Program &node) override;
-
-    private:
-        std::ostream &_out;
-        i32 _indent = 0;
 
         void _show_indent(const std::string &text);
         void _push();
