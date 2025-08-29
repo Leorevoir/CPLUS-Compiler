@@ -262,11 +262,43 @@ void cplus::ast::ASTLogger::visit(ForeachStatement &node)
     _pop();
 }
 
-void cplus::ast::ASTLogger::visit(CaseStatement __attribute__((unused)) & node)
+void cplus::ast::ASTLogger::visit(CaseStatement &node)
 {
     _out << logger::CPLUS_MAGENTA;
     _show_indent("Case\n");
     _out << logger::CPLUS_RESET;
+    _push();
+
+    if (node.expression) {
+        _show_indent("Expression:\n");
+        _push();
+        node.expression->accept(*this);
+        _pop();
+    }
+
+    for (const auto &clause : node.clauses) {
+        if (clause.value) {
+            _out << logger::CPLUS_MAGENTA;
+            _show_indent("Case:\n");
+            _out << logger::CPLUS_RESET;
+            _push();
+            clause.value->accept(*this);
+            _pop();
+        } else {
+            _out << logger::CPLUS_MAGENTA;
+            _show_indent("Default:\n");
+            _out << logger::CPLUS_RESET;
+        }
+
+        _show_indent("Statements:\n");
+        _push();
+        for (const auto &stmt : clause.statements) {
+            stmt->accept(*this);
+        }
+        _pop();
+    }
+
+    _pop();
 }
 
 void cplus::ast::ASTLogger::visit(FunctionDeclaration &node)
