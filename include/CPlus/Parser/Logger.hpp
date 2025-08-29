@@ -40,9 +40,6 @@ class ASTLogger : public ASTVisitor
         void _show_indent(const std::string &text);
         void _push();
         void _pop();
-
-        std::string _to_string(const BinaryExpression::Operator op);
-        std::string _to_string(const UnaryExpression::Operator op);
 };
 
 }// namespace cplus::ast
