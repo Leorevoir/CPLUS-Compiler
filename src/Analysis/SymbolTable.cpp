@@ -6,17 +6,18 @@
 * public
 */
 
-inline std::unique_ptr<cplus::ast::Module> cplus::SymbolTable::run(const std::unique_ptr<ast::Module> &program)
+inline std::unique_ptr<cplus::ast::Module> cplus::SymbolTable::run(const std::unique_ptr<ast::Module> &module)
 {
+    _module = module->name.c_str();
     if (cplus_flags & FLAG_DEBUG) {
-        logger::info("SymbolTable::run ", "Building symbol table...");
+        logger::info("SymbolTable::run ", "Building symbol table for module: ", _module);
     }
 
     _enter_scope();
-    program->accept(*this);
+    module->accept(*this);
     _exit_scope();
 
-    return std::move(const_cast<std::unique_ptr<ast::Module> &>(program));
+    return std::move(const_cast<std::unique_ptr<ast::Module> &>(module));
 }
 
 /**
@@ -72,7 +73,8 @@ inline void cplus::SymbolTable::visit(ast::FunctionDeclaration &node)
         node.return_type ? ast::make<ast::Type>(node.return_type->kind, node.return_type->name) : ast::make<ast::Type>(ast::Type::VOID);
 
     if (!_declare(std::string(node.name), st::Symbol::FUNCTION, std::move(return_type), false, node.line, node.column)) {
-        throw exception::Error("SymbolTable::visit", "Function \"", node.name, "\" already declared at ", node.line, ":", node.column);
+        throw exception::Error("SymbolTable::visit", "Function \"", node.name, "\" already declared in module: ", _module, " at ",
+            node.line, ":", node.column);
     }
 
     _enter_scope();
@@ -82,8 +84,8 @@ inline void cplus::SymbolTable::visit(ast::FunctionDeclaration &node)
             param.type ? ast::make<ast::Type>(param.type->kind, param.type->name) : ast::make<ast::Type>(ast::Type::AUTO);
 
         if (!_declare(std::string(param.name), st::Symbol::PARAMETER, std::move(param_type), false)) {
-            throw exception::Error("SymbolTable::visit", "Parameter '", param.name, "' already declared in function '", node.name, "' at ",
-                node.line, ":", node.column);
+            throw exception::Error("SymbolTable::visit", "Parameter '", param.name, "' already declared in function '", node.name,
+                " in module: ", _module, "' at ", node.line, ":", node.column);
         }
     }
 
@@ -103,12 +105,13 @@ inline void cplus::SymbolTable::visit(ast::VariableDeclaration &node)
     } else if (node.initializer) {
         var_type = _infer_type(*node.initializer);
     } else {
-        throw exception::Error("SymbolTable::visit", "Variable '", node.name, "' must have type or initializer at ", node.line, ":",
-            node.column);
+        throw exception::Error("SymbolTable::visit", "Variable '", node.name, "' must have type or initializer in module: ", _module,
+            " at ", node.line, ":", node.column);
     }
 
     if (!_declare(std::string(node.name), st::Symbol::VARIABLE, std::move(var_type), node.is_const, node.line, node.column)) {
-        throw exception::Error("SymbolTable::visit", "Variable '", node.name, "' already declared at ", node.line, ":", node.column);
+        throw exception::Error("SymbolTable::visit", "Variable '", node.name, "' already declared in module: ", _module, " at ", node.line,
+            ":", node.column);
     }
 
     if (node.initializer) {
@@ -121,7 +124,8 @@ inline void cplus::SymbolTable::visit(ast::IdentifierExpression &node)
     st::Symbol *symbol = _lookup(std::string(node.name));
 
     if (!symbol) {
-        throw exception::Error("SymbolTable::visit", "Undefined identifier '", node.name, "' at ", node.line, ":", node.column);
+        throw exception::Error("SymbolTable::visit", "Undefined identifier '", node.name, "' in module: ", _module, " at ", node.line, ":",
+            node.column);
     }
 
     node.type = ast::make<ast::Type>(symbol->type->kind, symbol->type->name);
@@ -216,8 +220,8 @@ inline void cplus::SymbolTable::visit(ast::ForeachStatement &node)
     const std::string iterator_name = std::string(node.iterator_name);
 
     if (!_declare(iterator_name, st::Symbol::VARIABLE, std::move(iter_type), false, node.line, node.column)) {
-        throw exception::Error("SymbolTable::visit", "Variable '", iterator_name, "' already declared in foreach at ", node.line, ":",
-            node.column);
+        throw exception::Error("SymbolTable::visit", "Variable '", iterator_name, "' already declared in foreach in module: ", _module,
+            " at ", node.line, ":", node.column);
     }
 
     if (node.body) {

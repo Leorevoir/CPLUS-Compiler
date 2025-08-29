@@ -71,11 +71,12 @@ class SymbolTable : public CompilerPass<std::unique_ptr<ast::Module>, std::uniqu
         constexpr SymbolTable() = default;
         constexpr ~SymbolTable() = default;
 
-        std::unique_ptr<ast::Module> run(const std::unique_ptr<ast::Module> &tokens) override;
+        std::unique_ptr<ast::Module> run(const std::unique_ptr<ast::Module> &module) override;
 
     private:
         std::vector<std::unique_ptr<st::Scope>> scope_stack;
         st::Scope *current_scope = nullptr;
+        cstr _module;
 
         void visit(ast::LiteralExpression &node) override;
         void visit(ast::IdentifierExpression &node) override;

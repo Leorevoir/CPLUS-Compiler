@@ -35,18 +35,24 @@ std::vector<cplus::Token> cplus::LexicalAnalyzer::run(const FileContent &source)
 {
     _tokens.clear();
     _source = std::move(source.content);
+    _module = source.file.c_str();
     _position = 0;
     _line = 1;
     _column = 1;
 
+    if (cplus_flags & FLAG_DEBUG) {
+        logger::info("LexicalAnalyzer::run ", "Lexical analyzing module: ", _module);
+    }
+
     _add_token(TokenKind::TOKEN_MODULE, std::move(source.file));
+    _tokens.back().line = 0;
+    _tokens.back().column = 0;
     while (!_is_at_end()) {
         _scan_token();
     }
     _add_token(TokenKind::TOKEN_EOF, "");
 
     if (cplus_flags & FLAG_DEBUG) {
-        logger::info("LexicalAnalyzer", "Tokens:");
         for (const auto &token : _tokens) {
             logger::info("  ", token);
         }
@@ -206,7 +212,7 @@ void cplus::LexicalAnalyzer::_scan_token()
             } else if (std::isalpha(c) || c == '_') {
                 _scan_identifier();
             } else {
-                throw exception::Error("LexicalAnalyzer", "Unexpected character at ", _line, ":", _column);
+                throw exception::Error("LexicalAnalyzer", "Unexpected character in module: ", _module, " at ", _line, ":", _column);
             }
             break;
     }
@@ -342,7 +348,7 @@ void cplus::LexicalAnalyzer::_scan_string()
     }
 
     if (_is_at_end()) {
-        throw exception::Error("LexicalAnalyzer", "Unterminated string at ", start_line, ":", start_column);
+        throw exception::Error("LexicalAnalyzer", "Unterminated string in module: ", _module, " at ", start_line, ":", start_column);
     }
 
     _advance();
@@ -359,7 +365,7 @@ void cplus::LexicalAnalyzer::_scan_character()
 
     if (_peek() == '\'') {
         _advance();//<< consume closing quote
-        throw exception::Error("LexicalAnalyzer", "Empty character literal at ", start_line, ":", start_column);
+        throw exception::Error("LexicalAnalyzer", "Empty character literal in module: ", _module, " at ", start_line, ":", start_column);
     }
 
     if (_peek() == '\\') {
@@ -372,7 +378,8 @@ void cplus::LexicalAnalyzer::_scan_character()
     }
 
     if (_peek() != '\'' || _is_at_end()) {
-        throw exception::Error("LexicalAnalyzer", "Unterminated character literal at ", start_line, ":", start_column);
+        throw exception::Error("LexicalAnalyzer", "Unterminated character literal in module: ", _module, " at ", start_line, ":",
+            start_column);
     }
 
     _advance();//<< consume closing quote

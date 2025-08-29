@@ -26,6 +26,7 @@ class LexicalAnalyzer : public CompilerPass<FileContent, std::vector<Token>>
 
     private:
         std::string _source;
+        cstr _module;
         u64 _position = 0;
         u64 _line = 1;
         u64 _column = 1;

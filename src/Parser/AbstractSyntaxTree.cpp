@@ -11,10 +11,6 @@ std::unique_ptr<cplus::ast::Module> cplus::AbstractSyntaxTree::run(const std::ve
     _tokens = tokens;
     _current = 0;
 
-    if (cplus_flags & FLAG_DEBUG) {
-        logger::info("AbstractSyntaxTree::run ", "Parsing tokens to AST...");
-    }
-
     auto module = _parse_module();
 
     if (cplus_flags & FLAG_DEBUG) {
@@ -70,7 +66,7 @@ const cplus::Token &cplus::AbstractSyntaxTree::_consume(TokenKind kind, const st
     }
 
     const auto &current = _peek();
-    throw exception::Error("AbstractSyntaxTree::_consume", message, " at ", std::to_string(current.line), ":",
+    throw exception::Error("AbstractSyntaxTree::_consume", message, " in module: ", _module, " at ", std::to_string(current.line), ":",
         std::to_string(current.column));
 }
 
@@ -129,10 +125,15 @@ void cplus::AbstractSyntaxTree::_synchronize()
 std::unique_ptr<cplus::ast::Module> cplus::AbstractSyntaxTree::_parse_module()
 {
     auto module = ast::make<ast::Module>();
-
     const auto module_name = _consume(TokenKind::TOKEN_MODULE, "Lexical error, expected 'module'");
 
     module->name = std::move(module_name.lexeme);
+    _module = module->name.c_str();
+
+    if (cplus_flags & FLAG_DEBUG) {
+        logger::info("AbstractSyntaxTree::run ", "Parsing tokens to AST for module: ", _module);
+    }
+
     while (!_is_at_end()) {
         if (auto decl = _parse_declaration()) {
             module->declarations.push_back(std::move(decl));

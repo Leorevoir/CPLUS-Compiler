@@ -16,6 +16,7 @@ class AbstractSyntaxTree : public CompilerPass<std::vector<Token>, std::unique_p
 
     private:
         std::vector<Token> _tokens;
+        cstr _module;
         u64 _current = 0;
 
         /** @brief helpers */
