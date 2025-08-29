@@ -27,7 +27,7 @@ constexpr auto print_option = [](const std::string &flags, const std::string &de
     std::cout << "  " << yellow << flags << reset << gray << "   " << description << reset << std::endl;
 };
 
-static inline void usage()
+static constexpr inline void usage()
 {
     std::cout << bold << "USAGE: " << reset << green << "cplus " << reset << yellow << "[options] " << reset << blue << "<input.cp>"
               << reset << std::endl
@@ -38,18 +38,22 @@ static inline void usage()
     print_option("-help, --help", " Show this help message");
     print_option("-d,  --debug", "  Enable debug mode");
     print_option("-o,  --output", " Output file");
+    print_option("-t,  --show-tokens", " Show Tokens");
+    print_option("-a,  --show-ast", " Show AST");
 
     std::cout << std::endl;
+    std::exit(CPLUS_SUCCESS);
 }
 
-static inline void version()
+static constexpr inline void version()
 {
     std::cout << bold << "CPlus " << reset << "v." << CPLUS_VERSION << std::endl
               << "Not C, not C++, just " << red_bold << "C+" << reset << std::endl
               << yellow << "Copyright (c) 2025-2026 CPlus Contributors" << reset << std::endl;
+    std::exit(CPLUS_SUCCESS);
 }
 
-static inline void output(cplus::cstr filename)
+static constexpr inline void output(cplus::cstr filename)
 {
     static bool output_set = false;
 
@@ -61,7 +65,7 @@ static inline void output(cplus::cstr filename)
     output_set = true;
 }
 
-static inline void input(cplus::cstr filename)
+static constexpr inline void input(cplus::cstr filename)
 {
     struct stat st;
 
@@ -79,27 +83,22 @@ static const inline std::unordered_map<std::string, std::function<void()>> _flag
     {"-h",
         []() {
             usage();
-            std::exit(0);
         }},
     {"-help",
         []() {
             usage();
-            std::exit(0);
         }},
     {"--help",
         []() {
             usage();
-            std::exit(0);
         }},
     {"-v",
         []() {
             version();
-            std::exit(0);
         }},
     {"--version",
         []() {
             version();
-            std::exit(0);
         }},
     {"-d",
         []() {
@@ -108,6 +107,22 @@ static const inline std::unordered_map<std::string, std::function<void()>> _flag
     {"--debug",
         []() {
             cplus::cplus_flags |= (cplus::Flags::FLAG_DEBUG);
+        }},
+    {"-t",
+        []() {
+            cplus::cplus_flags |= (cplus::Flags::FLAG_SHOW_TOKENS);
+        }},
+    {"--show-tokens",
+        []() {
+            cplus::cplus_flags |= (cplus::Flags::FLAG_SHOW_TOKENS);
+        }},
+    {"-a",
+        []() {
+            cplus::cplus_flags |= (cplus::Flags::FLAG_SHOW_AST);
+        }},
+    {"--show-ast",
+        []() {
+            cplus::cplus_flags |= (cplus::Flags::FLAG_SHOW_AST);
         }},
 };
 // clang-format on

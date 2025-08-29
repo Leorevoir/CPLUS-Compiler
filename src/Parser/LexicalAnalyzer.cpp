@@ -52,7 +52,7 @@ std::vector<cplus::Token> cplus::LexicalAnalyzer::run(const FileContent &source)
     }
     _add_token(TokenKind::TOKEN_EOF, "");
 
-    if (cplus_flags & FLAG_DEBUG) {
+    if (cplus_flags & FLAG_SHOW_TOKENS) {
         for (const auto &token : _tokens) {
             logger::info("  ", token);
         }

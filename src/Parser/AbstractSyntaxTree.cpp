@@ -13,7 +13,7 @@ std::unique_ptr<cplus::ast::Module> cplus::AbstractSyntaxTree::run(const std::ve
 
     auto module = _parse_module();
 
-    if (cplus_flags & FLAG_DEBUG) {
+    if (cplus_flags & FLAG_SHOW_AST) {
         ast::ASTLogger logger;
         logger.show(*module);
     }
