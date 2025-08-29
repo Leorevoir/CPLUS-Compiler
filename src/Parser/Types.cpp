@@ -75,7 +75,7 @@ void cplus::ast::FunctionDeclaration::accept(cplus::ast::ASTVisitor &visitor)
     visitor.visit(*this);
 }
 
-void cplus::ast::Program::accept(cplus::ast::ASTVisitor &visitor)
+void cplus::ast::Module::accept(cplus::ast::ASTVisitor &visitor)
 {
     visitor.visit(*this);
 }

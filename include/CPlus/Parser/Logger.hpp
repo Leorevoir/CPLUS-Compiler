@@ -35,7 +35,7 @@ class ASTLogger : public ASTVisitor
         void visit(ForeachStatement &node) override;
         void visit(CaseStatement &node) override;
         void visit(FunctionDeclaration &node) override;
-        void visit(Program &node) override;
+        void visit(Module &node) override;
 
         void _show_indent(const std::string &text);
         void _push();

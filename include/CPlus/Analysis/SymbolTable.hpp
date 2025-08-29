@@ -65,13 +65,13 @@ class Scope
 
 }// namespace st
 
-class SymbolTable : public CompilerPass<std::unique_ptr<ast::Program>, std::unique_ptr<ast::Program>>, public ast::ASTVisitor
+class SymbolTable : public CompilerPass<std::unique_ptr<ast::Module>, std::unique_ptr<ast::Module>>, public ast::ASTVisitor
 {
     public:
         constexpr SymbolTable() = default;
         constexpr ~SymbolTable() = default;
 
-        std::unique_ptr<ast::Program> run(const std::unique_ptr<ast::Program> &tokens) override;
+        std::unique_ptr<ast::Module> run(const std::unique_ptr<ast::Module> &tokens) override;
 
     private:
         std::vector<std::unique_ptr<st::Scope>> scope_stack;
@@ -92,7 +92,7 @@ class SymbolTable : public CompilerPass<std::unique_ptr<ast::Program>, std::uniq
         void visit(ast::ForeachStatement &node) override;
         void visit(ast::CaseStatement &node) override;
         void visit(ast::FunctionDeclaration &node) override;
-        void visit(ast::Program &node) override;
+        void visit(ast::Module &node) override;
 
         void _enter_scope();
         void _exit_scope();

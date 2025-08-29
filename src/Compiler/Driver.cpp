@@ -16,7 +16,7 @@ cplus::CompilerDriver::CompilerDriver()
 }
 // clang-format on
 
-void cplus::CompilerDriver::compile(const std::string &source)
+void cplus::CompilerDriver::compile(const FileContent &source)
 {
     const auto ast = _pipeline.execute(source);
 

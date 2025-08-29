@@ -4,6 +4,7 @@
 #include <CPlus/Macros.hpp>
 
 #include <fstream>
+#include <utility>
 
 static std::string read_file_content(const std::string &filename)
 {
@@ -35,7 +36,7 @@ static void cplus_compiler_routine()
             cplus::logger::info("Compiling file: ", file);
         }
 
-        driver.compile(content);
+        driver.compile({file, content});
     }
 }
 

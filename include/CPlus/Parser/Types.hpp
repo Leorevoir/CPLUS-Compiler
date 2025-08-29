@@ -335,9 +335,10 @@ class FunctionDeclaration : public Statement
         void accept(ASTVisitor &visitor) override;
 };
 
-class Program : public ASTNode
+class Module : public ASTNode
 {
     public:
+        std::string name;
         std::vector<StatementPtr> declarations;
 
         void accept(ASTVisitor &visitor) override;
@@ -366,7 +367,7 @@ class ASTVisitor
         virtual void visit(ForeachStatement &node) = 0;
         virtual void visit(CaseStatement &node) = 0;
         virtual void visit(FunctionDeclaration &node) = 0;
-        virtual void visit(Program &node) = 0;
+        virtual void visit(Module &node) = 0;
 };
 
 template<typename T, typename... Args>

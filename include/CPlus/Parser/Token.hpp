@@ -8,6 +8,7 @@
 namespace cplus {
 
 enum class TokenKind {
+    TOKEN_MODULE,
     TOKEN_DEF,
     TOKEN_CONST,
     TOKEN_RETURN,
@@ -84,6 +85,8 @@ struct Token {
 static inline constexpr cplus::cstr to_string(const TokenKind kind)
 {
     switch (kind) {
+        case TokenKind::TOKEN_MODULE:
+            return "MODULE";
         case TokenKind::TOKEN_DEF:
             return "DEF";
         case TokenKind::TOKEN_CONST:

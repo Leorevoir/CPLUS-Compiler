@@ -9,13 +9,20 @@
 
 namespace cplus {
 
-class LexicalAnalyzer : public CompilerPass<std::string, std::vector<Token>>
+/**
+* @brief LexicalAnalyzer
+* @details converts source code into tokens
+*
+* @input std::pair<std::string, std::string> (filename, source code)
+* @output std::vector<Token>
+*/
+class LexicalAnalyzer : public CompilerPass<FileContent, std::vector<Token>>
 {
     public:
         constexpr LexicalAnalyzer() = default;
         constexpr ~LexicalAnalyzer() = default;
 
-        std::vector<Token> run(const std::string &source) override;
+        std::vector<Token> run(const FileContent &source) override;
 
     private:
         std::string _source;

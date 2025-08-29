@@ -6,7 +6,7 @@
 * public
 */
 
-inline std::unique_ptr<cplus::ast::Program> cplus::SymbolTable::run(const std::unique_ptr<ast::Program> &program)
+inline std::unique_ptr<cplus::ast::Module> cplus::SymbolTable::run(const std::unique_ptr<ast::Module> &program)
 {
     if (cplus_flags & FLAG_DEBUG) {
         logger::info("SymbolTable::run ", "Building symbol table...");
@@ -16,7 +16,7 @@ inline std::unique_ptr<cplus::ast::Program> cplus::SymbolTable::run(const std::u
     program->accept(*this);
     _exit_scope();
 
-    return std::move(const_cast<std::unique_ptr<ast::Program> &>(program));
+    return std::move(const_cast<std::unique_ptr<ast::Module> &>(program));
 }
 
 /**
@@ -59,7 +59,7 @@ inline cplus::st::Symbol *cplus::SymbolTable::_lookup(const std::string &name)
  * ast visit
  */
 
-inline void cplus::SymbolTable::visit(ast::Program &node)
+inline void cplus::SymbolTable::visit(ast::Module &node)
 {
     for (const auto &decl : node.declarations) {
         decl->accept(*this);

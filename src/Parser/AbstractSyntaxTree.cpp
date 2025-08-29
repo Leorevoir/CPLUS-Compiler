@@ -6,7 +6,7 @@
 * public
 */
 
-std::unique_ptr<cplus::ast::Program> cplus::AbstractSyntaxTree::run(const std::vector<Token> &tokens)
+std::unique_ptr<cplus::ast::Module> cplus::AbstractSyntaxTree::run(const std::vector<Token> &tokens)
 {
     _tokens = tokens;
     _current = 0;
@@ -15,14 +15,14 @@ std::unique_ptr<cplus::ast::Program> cplus::AbstractSyntaxTree::run(const std::v
         logger::info("AbstractSyntaxTree::run ", "Parsing tokens to AST...");
     }
 
-    auto program = _parse_program();
+    auto module = _parse_module();
 
     if (cplus_flags & FLAG_DEBUG) {
         ast::ASTLogger logger;
-        logger.show(*program);
+        logger.show(*module);
     }
 
-    return program;
+    return module;
 }
 
 /**
@@ -126,17 +126,19 @@ void cplus::AbstractSyntaxTree::_synchronize()
 * private
 */
 
-std::unique_ptr<cplus::ast::Program> cplus::AbstractSyntaxTree::_parse_program()
+std::unique_ptr<cplus::ast::Module> cplus::AbstractSyntaxTree::_parse_module()
 {
-    auto program = ast::make<ast::Program>();
+    auto module = ast::make<ast::Module>();
 
+    const auto module_name = _consume(TokenKind::TOKEN_MODULE, "Lexical error, expected 'module'");
+
+    module->name = std::move(module_name.lexeme);
     while (!_is_at_end()) {
         if (auto decl = _parse_declaration()) {
-            program->declarations.push_back(std::move(decl));
+            module->declarations.push_back(std::move(decl));
         }
     }
-
-    return program;
+    return module;
 }
 
 cplus::ast::StatementPtr cplus::AbstractSyntaxTree::_parse_declaration()

@@ -319,11 +319,11 @@ void cplus::ast::ASTLogger::visit(FunctionDeclaration &node)
     _pop();
 }
 
-void cplus::ast::ASTLogger::visit(Program &node)
+void cplus::ast::ASTLogger::visit(Module &node)
 {
     _out << logger::CPLUS_RED_BOLD;
-    _show_indent("Program\n");
-    _out << logger::CPLUS_RESET;
+    _show_indent("Module: ");
+    _out << logger::CPLUS_RESET << node.name << "\n";
     _push();
     for (auto &decl : node.declarations)
         decl->accept(*this);

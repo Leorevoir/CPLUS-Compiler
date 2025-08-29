@@ -31,14 +31,15 @@ static const std::unordered_map<std::string_view, cplus::TokenKind> keywords = {
  * public
  */
 
-std::vector<cplus::Token> cplus::LexicalAnalyzer::run(const std::string &source)
+std::vector<cplus::Token> cplus::LexicalAnalyzer::run(const FileContent &source)
 {
     _tokens.clear();
-    _source = source;
+    _source = std::move(source.content);
     _position = 0;
     _line = 1;
     _column = 1;
 
+    _add_token(TokenKind::TOKEN_MODULE, std::move(source.file));
     while (!_is_at_end()) {
         _scan_token();
     }

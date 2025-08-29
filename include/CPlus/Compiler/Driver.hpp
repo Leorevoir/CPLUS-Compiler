@@ -12,7 +12,7 @@ class CompilerDriver
     public:
         CompilerDriver();
 
-        void compile(const std::string &source);
+        void compile(const FileContent &source);
 
     private:
         CompilerPipeline<LexicalAnalyzer, AbstractSyntaxTree, SymbolTable> _pipeline;

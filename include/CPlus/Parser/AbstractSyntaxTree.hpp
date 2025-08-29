@@ -6,13 +6,13 @@
 
 namespace cplus {
 
-class AbstractSyntaxTree : public CompilerPass<std::vector<Token>, std::unique_ptr<ast::Program>>
+class AbstractSyntaxTree : public CompilerPass<std::vector<Token>, std::unique_ptr<ast::Module>>
 {
     public:
         constexpr AbstractSyntaxTree() = default;
         constexpr ~AbstractSyntaxTree() = default;
 
-        std::unique_ptr<ast::Program> run(const std::vector<Token> &tokens) override;
+        std::unique_ptr<ast::Module> run(const std::vector<Token> &tokens) override;
 
     private:
         std::vector<Token> _tokens;
@@ -31,7 +31,7 @@ class AbstractSyntaxTree : public CompilerPass<std::vector<Token>, std::unique_p
         void _synchronize();
 
         /** @brief parsing */
-        std::unique_ptr<ast::Program> _parse_program();
+        std::unique_ptr<ast::Module> _parse_module();
         ast::TypePtr _parse_type();
 
         /** @brief statements */
