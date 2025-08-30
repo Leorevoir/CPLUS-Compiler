@@ -4,11 +4,6 @@
 #include <CPlus/Macros.hpp>
 #include <CPlus/Types.hpp>
 
-#include <functional>
-#include <iostream>
-#include <string>
-#include <unordered_map>
-
 #include <sys/stat.h>
 
 int cplus::cplus_flags = 0;
@@ -79,35 +74,24 @@ static constexpr inline void input(cplus::cstr filename)
 }
 
 // clang-format off
-static const inline std::unordered_map<std::string, std::function<void()>> _flags = {
+using FunctionPointer = void (*)();
+
+struct FlagEntry {
+    cplus::cstr flag;
+    FunctionPointer function;
+};
+
+static constexpr FlagEntry _flag_entries[] = {
     {"-h", usage},
     {"--help", usage},
     {"-v", version},
     {"--version", version},
-    {"-d",
-        []() {
-            cplus::cplus_flags |= (cplus::Flags::FLAG_DEBUG);
-        }},
-    {"--debug",
-        []() {
-            cplus::cplus_flags |= (cplus::Flags::FLAG_DEBUG);
-        }},
-    {"-t",
-        []() {
-            cplus::cplus_flags |= (cplus::Flags::FLAG_SHOW_TOKENS);
-        }},
-    {"--show-tokens",
-        []() {
-            cplus::cplus_flags |= (cplus::Flags::FLAG_SHOW_TOKENS);
-        }},
-    {"-a",
-        []() {
-            cplus::cplus_flags |= (cplus::Flags::FLAG_SHOW_AST);
-        }},
-    {"--show-ast",
-        []() {
-            cplus::cplus_flags |= (cplus::Flags::FLAG_SHOW_AST);
-        }},
+    {"-d", []() { cplus::cplus_flags |= cplus::Flags::FLAG_DEBUG; }},
+    {"--debug", []() { cplus::cplus_flags |= cplus::Flags::FLAG_DEBUG; }},
+    {"-t", []() { cplus::cplus_flags |= cplus::Flags::FLAG_SHOW_TOKENS; }},
+    {"--show-tokens", []() { cplus::cplus_flags |= cplus::Flags::FLAG_SHOW_TOKENS; }},
+    {"-a", []() { cplus::cplus_flags |= cplus::Flags::FLAG_SHOW_AST; }},
+    {"--show-ast", []() { cplus::cplus_flags |= cplus::Flags::FLAG_SHOW_AST; }},
 };
 // clang-format on
 
@@ -117,10 +101,11 @@ void cplus::arguments(const i32 argc, const char **argv)
         const std::string arg = argv[i];
 
         if (arg.starts_with('-')) {
-            const auto it = _flags.find(arg);
 
-            if (it != _flags.end()) {
-                it->second();
+            if (const auto it = std::find_if(std::begin(_flag_entries), std::end(_flag_entries),
+                    [&arg](const FlagEntry &entry) { return entry.flag == arg; });
+                it != std::end(_flag_entries)) {
+                it->function();
 
             } else if (arg == "-o" || arg == "--output") {
 

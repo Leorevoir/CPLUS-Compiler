@@ -4,7 +4,6 @@
 #include <CPlus/Macros.hpp>
 
 #include <fstream>
-#include <utility>
 
 static std::string read_file_content(const std::string &filename)
 {
