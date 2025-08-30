@@ -135,11 +135,17 @@ inline void cplus::st::SymbolTable::visit(ast::FunctionDeclaration &node)
         }
     }
 
+    _has_return_stack.push_back(false);
     if (node.body) {
         node.body->accept(*this);
     }
+    if (_return_type_stack.back()->kind != ast::Type::VOID && !_has_return_stack.back()) {
+        throw exception::Error("SymbolTable::visit", "Non-void function '", node.name, "' must return a value in module: ", _module, " at ",
+            node.line, ":", node.column);
+    }
 
     _exit_scope();
+    _has_return_stack.pop_back();
     _return_type_stack.pop_back();
 }
 
@@ -301,6 +307,7 @@ inline void cplus::st::SymbolTable::visit(ast::ReturnStatement &node)
         throw exception::Error("SymbolTable::visit", "Return statement outside of function in module: ", _module, " at ", node.line, ":",
             node.column);
     }
+    _has_return_stack.back() = true;
 
     if (node.value) {
         node.value->accept(*this);

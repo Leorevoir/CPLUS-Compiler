@@ -73,6 +73,8 @@ class SymbolTable : public CompilerPass<std::unique_ptr<ast::Module>, std::uniqu
     private:
         std::vector<std::unique_ptr<st::Scope>> _scope_stack;
         std::vector<ast::TypePtr> _return_type_stack;
+        std::vector<bool> _has_return_stack;
+
         st::Scope *_current_scope = nullptr;
         cstr _module;
 
