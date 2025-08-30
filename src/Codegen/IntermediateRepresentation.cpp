@@ -23,7 +23,7 @@ std::string cplus::ir::IntermediateRepresentation::run(const std::unique_ptr<ast
  * helpers
  */
 
-static inline constexpr std::string binary_op_to_string(const cplus::ast::BinaryExpression::Operator op)
+static inline constexpr cplus::cstr binary_op_to_string(const cplus::ast::BinaryExpression::Operator op)
 {
     switch (op) {
         case cplus::ast::BinaryExpression::ADD:
@@ -57,7 +57,7 @@ static inline constexpr std::string binary_op_to_string(const cplus::ast::Binary
     }
 }
 
-static inline constexpr std::string unary_op_to_string(const cplus::ast::UnaryExpression::Operator op)
+static inline constexpr cplus::cstr unary_op_to_string(const cplus::ast::UnaryExpression::Operator op)
 {
     switch (op) {
         case cplus::ast::UnaryExpression::NOT:
@@ -99,14 +99,32 @@ std::string cplus::ir::IntermediateRepresentation::new_label(const std::string &
 * AST visitor
 */
 
-void cplus::ir::IntermediateRepresentation::visit(ast::LiteralExpression __attribute__((unused)) & node)
+void cplus::ir::IntermediateRepresentation::visit(ast::LiteralExpression &node)
 {
-    //
+    if (std::holds_alternative<i32>(node.value)) {
+        const auto v = std::get<i32>(node.value);
+        _last_value = "imm.i32 " + std::to_string(v);
+
+    } else if (std::holds_alternative<f32>(node.value)) {
+        _last_value = "imm.f32 " + std::to_string(std::get<f32>(node.value));
+
+    } else if (std::holds_alternative<std::string_view>(node.value)) {
+        _last_value = "const.str \"" + std::string(std::get<std::string_view>(node.value)) + "\"";
+
+    } else if (std::holds_alternative<bool>(node.value)) {
+        _last_value = (std::get<bool>(node.value) ? "imm.bool 1" : "imm.bool 0");
+    }
 }
 
-void cplus::ir::IntermediateRepresentation::visit(ast::IdentifierExpression __attribute__((unused)) & node)
+void cplus::ir::IntermediateRepresentation::visit(ast::IdentifierExpression &node)
 {
-    //
+    const auto it = _value_map.find(std::string(node.name));
+
+    if (it != _value_map.end()) {
+        _last_value = it->second;
+    } else {
+        _last_value = std::string(node.name);
+    }
 }
 
 void cplus::ir::IntermediateRepresentation::visit(ast::BinaryExpression &node)
@@ -155,7 +173,8 @@ void cplus::ir::IntermediateRepresentation::visit(ast::UnaryExpression &node)
 
 void cplus::ir::IntermediateRepresentation::visit(ast::CallExpression &node)
 {
-    std::vector<std::string> args(node.arguments.size());
+    std::vector<std::string> args;
+    args.reserve(node.arguments.size());
 
     for (const auto &arg : node.arguments) {
         arg->accept(*this);
@@ -164,11 +183,9 @@ void cplus::ir::IntermediateRepresentation::visit(ast::CallExpression &node)
 
     const std::string tmp = new_temp("call");
     std::string arglist;
-
-    for (u64 i = 0; i < args.size(); ++i) {
-        if (i) {
+    for (size_t i = 0; i < args.size(); ++i) {
+        if (i)
             arglist += ", ";
-        }
         arglist += args[i];
     }
 
@@ -206,26 +223,23 @@ void cplus::ir::IntermediateRepresentation::visit(ast::BlockStatement &node)
 void cplus::ir::IntermediateRepresentation::visit(ast::VariableDeclaration &node)
 {
     const std::string name(node.name);
+    const std::string ssa = new_temp(name);
 
     if (node.initializer) {
         node.initializer->accept(*this);
-        const std::string ssa = new_temp(name);
-
         emit("  " + ssa + " = mov " + _last_value);
         _last_value.clear();
-
     } else {
-        const std::string ssa = new_temp(name);
-
         emit("  " + ssa + " = undef");
     }
+    _value_map[name] = ssa;
 }
 
 void cplus::ir::IntermediateRepresentation::visit(ast::ReturnStatement &node)
 {
     if (node.value) {
         node.value->accept(*this);
-        emit("  ret" + _last_value);
+        emit("  ret " + _last_value);
 
     } else {
         emit("  ret");
@@ -266,13 +280,18 @@ void cplus::ir::IntermediateRepresentation::visit(ast::FunctionDeclaration &node
         const std::string ssa = new_temp(name);
 
         emit("  " + ssa + " = arg " + std::to_string(i));
+        _value_map[name] = ssa;
     }
 
     if (node.body) {
         node.body->accept(*this);
     }
 
-    emit("  ret");
+    /** @brief only emit implicit return if last statement wasn’t a return */
+    if (_output.rfind("  ret", _output.size() - 5) == std::string::npos) {
+        emit("  ret");
+    }
+
     emit("}");
 }
 

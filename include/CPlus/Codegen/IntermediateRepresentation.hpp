@@ -21,6 +21,8 @@ class IntermediateRepresentation : public CompilerPass<std::unique_ptr<ast::Modu
         std::string run(const std::unique_ptr<cplus::ast::Module> &scope) override;
 
     private:
+        std::unordered_map<std::string, std::string> _value_map;
+
         std::string _output;
         std::string _current_function;
         std::string _last_value;
