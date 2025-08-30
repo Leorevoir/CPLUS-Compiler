@@ -31,8 +31,6 @@ class IntermediateRepresentation : public CompilerPass<std::unique_ptr<ast::Modu
         u64 _temp_counter = 0;
         u64 _label_counter = 0;
 
-        bool _terminated = false;
-
         void _pop();
         void _push();
         void _push_copy();

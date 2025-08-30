@@ -95,7 +95,6 @@ static inline constexpr cplus::cstr unary_op_to_string(const cplus::ast::UnaryEx
 
 void cplus::ir::IntermediateRepresentation::_emit(const std::string &s)
 {
-    //TODO: use a logger for this to highlight IR output
     if (cplus_flags & FLAG_SHOW_IR) {
         std::cout << s << std::endl;
     }
@@ -173,11 +172,10 @@ inline void cplus::ir::IntermediateRepresentation::_set_name(const std::string &
 
 /**
 * @brief literal expression
-* @note handles i32, f32, bool, and string literals but i dont like this implementation
+* @note handles i32, f32, bool, and string literals
 */
 void cplus::ir::IntermediateRepresentation::visit(ast::LiteralExpression &node)
 {
-    //TODO: find a better way to handle different literal types
     if (std::holds_alternative<i32>(node.value)) {
         const auto v = std::get<i32>(node.value);
         _last_value = "imm.i32 " + std::to_string(v);
@@ -226,7 +224,6 @@ void cplus::ir::IntermediateRepresentation::visit(ast::BinaryExpression &node)
 */
 void cplus::ir::IntermediateRepresentation::visit(ast::UnaryExpression &node)
 {
-    //TODO: refactor this
     const bool operand_is_ident = dynamic_cast<ast::IdentifierExpression *>(node.operand.get()) != nullptr;
     std::string ident_name;
 
@@ -315,7 +312,6 @@ void cplus::ir::IntermediateRepresentation::visit(ast::AssignmentExpression &nod
 
 /**
 * @brief expression statement
-* @note TODO
 */
 void cplus::ir::IntermediateRepresentation::visit(ast::ExpressionStatement &node)
 {
@@ -371,11 +367,11 @@ void cplus::ir::IntermediateRepresentation::visit(ast::ReturnStatement &node)
         _emit("  ret");
     }
 
-    // _last_value.clear();
+    _last_value.clear();
 }
 
 /**
- * @brief if-else statement handling with SSA phi nodes
+ * @brief if-else statement handling with SSA phi nodes & dead code elimination
  * @note cond is evaluated first, but branch labels are not emitted here to keep IR structured
  */
 void cplus::ir::IntermediateRepresentation::visit(ast::IfStatement &node)
@@ -386,8 +382,11 @@ void cplus::ir::IntermediateRepresentation::visit(ast::IfStatement &node)
     _last_value.clear();
 
     const std::string then_label = _new_label("if.then");
-    const std::string else_label = node.else_statement ? _new_label("if.else") : _new_label("if.end");
     const std::string end_label = _new_label("if.end");
+
+    /** @brief check if else branch is empty to optimize branching */
+    const bool has_else = node.else_statement != nullptr;
+    const std::string else_label = has_else ? _new_label("if.else") : end_label;
 
     _emit("  br " + cond + ", %" + then_label + ", %" + else_label);
 
@@ -397,56 +396,85 @@ void cplus::ir::IntermediateRepresentation::visit(ast::IfStatement &node)
     /** @brief then branch */
     _emit("label %" + then_label + ":");
     _push_copy();
+    bool then_has_return = false;
+
     if (node.then_statement) {
+        const auto output_size_before = _output.size();
         node.then_statement->accept(*this);
+
+        /** @brief check if then branch ends with return */
+        const auto output_since = _output.substr(output_size_before);
+        then_has_return = output_since.find("  ret") != std::string::npos;
     }
+
     const std::unordered_map<std::string, std::string> then_map = _current_map();
     _pop();
-    _emit("  br %" + end_label);
+
+    /** @brief only emit branch if then block doesn't end with return */
+    if (!then_has_return) {
+        _emit("  br %" + end_label);
+    }
 
     /** @brief else branch (if any) */
     std::unordered_map<std::string, std::string> else_map;
-    _emit("label %" + else_label + ":");
-    if (node.else_statement) {
+    bool else_has_return = false;
+
+    if (has_else) {
+        _emit("label %" + else_label + ":");
         _push_copy();
+        const auto output_size_before = _output.size();
         node.else_statement->accept(*this);
+
+        /** @brief check if else branch ends with return */
+        const auto output_since = _output.substr(output_size_before);
+        else_has_return = output_since.find("  ret") != std::string::npos;
         else_map = _current_map();
         _pop();
+
+        /** @brief only emit branch if else block doesn't end with return */
+        if (!else_has_return) {
+            _emit("  br %" + end_label);
+        }
+
     } else {
         else_map = parent_map;
     }
-    _emit("  br %" + end_label);
 
-    /** @brief end label and phis */
-    _emit("label %" + end_label + ":");
+    /** @brief only emit end label if at least one branch doesn't return */
+    if (!then_has_return || !else_has_return) {
+        _emit("label %" + end_label + ":");
 
-    /** @brief collect all variable names from parent, then, and else maps */
-    std::unordered_set<std::string> varset;
-    for (const auto &kv : parent_map) {
-        varset.insert(kv.first);
-    }
-    for (const auto &kv : then_map) {
-        varset.insert(kv.first);
-    }
-    for (const auto &kv : else_map) {
-        varset.insert(kv.first);
-    }
-
-    /** @brief foreach variable with differing results, emit a phi & update current mapping */
-    for (const auto &var : varset) {
-        const std::string parent_ssa = parent_map.count(var) ? parent_map.at(var) : "undef";
-        const std::string then_ssa = then_map.count(var) ? then_map.at(var) : parent_ssa;
-        const std::string else_ssa = else_map.count(var) ? else_map.at(var) : parent_ssa;
-
-        if (then_ssa == else_ssa) {
-            _set_name(var, then_ssa);
-            continue;
+        /** @brief collect all variable names from parent, then, and else maps */
+        std::unordered_set<std::string> varset;
+        for (const auto &kv : parent_map) {
+            varset.insert(kv.first);
+        }
+        for (const auto &kv : then_map) {
+            varset.insert(kv.first);
+        }
+        for (const auto &kv : else_map) {
+            varset.insert(kv.first);
         }
 
-        const std::string phi_ssa = _new_temp(var + "_phi");
+        /** @brief foreach variable with differing results, emit a phi & update current mapping */
+        for (const auto &var : varset) {
+            const std::string parent_ssa = parent_map.count(var) ? parent_map.at(var) : "undef";
+            const std::string then_ssa = then_map.count(var) ? then_map.at(var) : parent_ssa;
+            const std::string else_ssa = else_map.count(var) ? else_map.at(var) : parent_ssa;
 
-        _emit("  " + phi_ssa + " = phi [" + then_ssa + ", %" + then_label + "], [" + else_ssa + ", %" + else_label + "]");
-        _set_name(var, phi_ssa);
+            /** @brief handle cases where one branch returns */
+            if (then_has_return && !else_has_return) {
+                _set_name(var, else_ssa);
+            } else if (else_has_return && !then_has_return) {
+                _set_name(var, then_ssa);
+            } else if (then_ssa == else_ssa) {
+                _set_name(var, then_ssa);
+            } else {
+                const std::string phi_ssa = _new_temp(var + "_phi");
+                _emit("  " + phi_ssa + " = phi [" + then_ssa + ", %" + then_label + "], [" + else_ssa + ", %" + else_label + "]");
+                _set_name(var, phi_ssa);
+            }
+        }
     }
 }
 
@@ -460,8 +488,8 @@ void cplus::ir::IntermediateRepresentation::visit(ast::ForStatement __attribute_
 }
 
 /**
-* @brief foreach loop
-* @note TODO
+ * @brief foreach loop
+ * @note TODO
 */
 void cplus::ir::IntermediateRepresentation::visit(ast::ForeachStatement __attribute__((unused)) & node)
 {
@@ -469,8 +497,8 @@ void cplus::ir::IntermediateRepresentation::visit(ast::ForeachStatement __attrib
 }
 
 /**
-* @brief case statement
-* @note TODO
+ * @brief case statement
+ * @note TODO
  */
 void cplus::ir::IntermediateRepresentation::visit(ast::CaseStatement __attribute__((unused)) & node)
 {
@@ -479,7 +507,7 @@ void cplus::ir::IntermediateRepresentation::visit(ast::CaseStatement __attribute
 
 /**
 * @brief function declaration
-* @note creates a new scope for parameters and local variables
+* @note creates a new scope for parameters and local variables with explicit calling convention
 */
 void cplus::ir::IntermediateRepresentation::visit(ast::FunctionDeclaration &node)
 {
