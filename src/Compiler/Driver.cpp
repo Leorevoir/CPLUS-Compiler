@@ -10,7 +10,8 @@ cplus::CompilerDriver::CompilerDriver()
         std::make_unique<lx::LexicalAnalyzer>(),
         std::make_unique<ast::AbstractSyntaxTree>(),
         std::make_unique<st::SymbolTable>(),
-        std::make_unique<ir::IntermediateRepresentation>()
+        std::make_unique<ir::IntermediateRepresentation>(),
+        std::make_unique<x86_64::Codegen>()
     )
 {
     /* __ctor__ */
@@ -19,7 +20,7 @@ cplus::CompilerDriver::CompilerDriver()
 
 void cplus::CompilerDriver::compile(const FileContent &source)
 {
-    const auto ir = _pipeline.execute(source);
+    const auto &x86_64 = _pipeline.execute(source);
 
     std::ofstream stream(cplus_output_file, std::ios::binary);
 
@@ -27,6 +28,6 @@ void cplus::CompilerDriver::compile(const FileContent &source)
         throw exception::Error("CompilerDriver::compile", "Failed to open output stream");
     }
 
-    stream.write(ir.data(), static_cast<std::streamsize>(ir.size()));
+    stream.write(x86_64.data(), static_cast<std::streamsize>(x86_64.size()));
     stream.close();
 }

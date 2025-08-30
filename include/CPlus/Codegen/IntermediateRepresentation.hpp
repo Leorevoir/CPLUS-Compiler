@@ -22,7 +22,7 @@ class IntermediateRepresentation : public CompilerPass<std::unique_ptr<ast::Modu
         const std::string run(const std::unique_ptr<cplus::ast::Module> &scope) override;
 
     private:
-        std::unordered_map<std::string, std::string> _value_map;
+        std::vector<std::unordered_map<std::string, std::string>> _value_map_stack;
 
         std::string _output;
         std::string _current_function;
@@ -31,10 +31,19 @@ class IntermediateRepresentation : public CompilerPass<std::unique_ptr<ast::Modu
         u64 _temp_counter = 0;
         u64 _label_counter = 0;
 
-        void emit(const std::string &s);
+        bool _terminated = false;
 
-        std::string new_temp(const std::string &hint);
-        std::string new_label(const std::string &hint);
+        void _pop();
+        void _push();
+        void _push_copy();
+
+        void _emit(const std::string &s);
+        std::string _lookup(const std::string &name) const;
+        std::unordered_map<std::string, std::string> &_current_map();
+        void _set_name(const std::string &name, const std::string &ssa);
+
+        std::string _new_temp(const std::string &hint);
+        std::string _new_label(const std::string &hint);
 
         void visit(ast::LiteralExpression &node) override;
         void visit(ast::IdentifierExpression &node) override;

@@ -92,6 +92,8 @@ static constexpr FlagEntry _flag_entries[] = {
     {"--show-tokens", []() { cplus::cplus_flags |= cplus::Flags::FLAG_SHOW_TOKENS; }},
     {"-a", []() { cplus::cplus_flags |= cplus::Flags::FLAG_SHOW_AST; }},
     {"--show-ast", []() { cplus::cplus_flags |= cplus::Flags::FLAG_SHOW_AST; }},
+    {"-i", []() { cplus::cplus_flags |= cplus::Flags::FLAG_SHOW_IR; }},
+    {"--show-ir", []() { cplus::cplus_flags |= cplus::Flags::FLAG_SHOW_IR; }}
 };
 // clang-format on
 

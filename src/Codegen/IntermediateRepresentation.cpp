@@ -1,5 +1,8 @@
+#include "CPlus/Arguments.hpp"
 #include <CPlus/Codegen/IntermediateRepresentation.hpp>
 #include <CPlus/Logger.hpp>
+
+#include <unordered_set>
 
 /**
  * public
@@ -12,9 +15,20 @@ const std::string cplus::ir::IntermediateRepresentation::run(const std::unique_p
     _output.clear();
     _last_value.clear();
     _current_function.clear();
+    _value_map_stack.clear();
 
-    emit("; C+ generated IR for module " + module->name);
+    if (cplus_flags & FLAG_DEBUG) {
+        logger::info("IntermediateRepresentation::run", "Generating IR for module " + module->name);
+    }
+
+    _push();
+    _emit("; C+ generated IR for module " + module->name);
     module->accept(*this);
+    _pop();
+
+    if (_value_map_stack.size() != 0) {
+        throw exception::Error("IntermediateRepresentation::run", "value map stack not empty after processing module");
+    }
 
     return _output;
 }
@@ -79,28 +93,91 @@ static inline constexpr cplus::cstr unary_op_to_string(const cplus::ast::UnaryEx
 * private
 */
 
-void cplus::ir::IntermediateRepresentation::emit(const std::string &s)
+void cplus::ir::IntermediateRepresentation::_emit(const std::string &s)
 {
+    //TODO: use a logger for this to highlight IR output
+    if (cplus_flags & FLAG_SHOW_IR) {
+        std::cout << s << std::endl;
+    }
+
     _output += s;
     _output += '\n';
 }
 
-std::string cplus::ir::IntermediateRepresentation::new_temp(const std::string &hint)
+std::string cplus::ir::IntermediateRepresentation::_new_temp(const std::string &hint)
 {
     return "%" + hint + std::to_string(_temp_counter++);
 }
 
-std::string cplus::ir::IntermediateRepresentation::new_label(const std::string &hint)
+std::string cplus::ir::IntermediateRepresentation::_new_label(const std::string &hint)
 {
     return hint + std::to_string(_label_counter++);
+}
+
+/**
+ * scopes
+ */
+
+inline std::unordered_map<std::string, std::string> &cplus::ir::IntermediateRepresentation::_current_map()
+{
+    if (_value_map_stack.empty()) {
+        _value_map_stack.emplace_back();
+    }
+    return _value_map_stack.back();
+}
+
+inline void cplus::ir::IntermediateRepresentation::_push_copy()
+{
+    if (_value_map_stack.empty()) {
+        _value_map_stack.emplace_back();
+    } else {
+        _value_map_stack.push_back(_current_map());
+    }
+}
+
+inline void cplus::ir::IntermediateRepresentation::_push()
+{
+    _value_map_stack.emplace_back();
+}
+
+inline void cplus::ir::IntermediateRepresentation::_pop()
+{
+    if (!_value_map_stack.empty()) {
+        _value_map_stack.pop_back();
+    }
+}
+
+std::string cplus::ir::IntermediateRepresentation::_lookup(const std::string &name) const
+{
+    for (auto it = _value_map_stack.rbegin(); it != _value_map_stack.rend(); ++it) {
+        const auto &m = *it;
+        const auto found = m.find(name);
+
+        if (found != m.end()) {
+            return found->second;
+        }
+    }
+
+    /** @brief should never happen bc of semantic analysis (../Analysis/SymbolTable.cpp) */
+    return name;
+}
+
+inline void cplus::ir::IntermediateRepresentation::_set_name(const std::string &name, const std::string &ssa)
+{
+    _current_map()[name] = ssa;
 }
 
 /**
 * AST visitor
 */
 
+/**
+* @brief literal expression
+* @note handles i32, f32, bool, and string literals but i dont like this implementation
+*/
 void cplus::ir::IntermediateRepresentation::visit(ast::LiteralExpression &node)
 {
+    //TODO: find a better way to handle different literal types
     if (std::holds_alternative<i32>(node.value)) {
         const auto v = std::get<i32>(node.value);
         _last_value = "imm.i32 " + std::to_string(v);
@@ -116,15 +193,16 @@ void cplus::ir::IntermediateRepresentation::visit(ast::LiteralExpression &node)
     }
 }
 
+/**
+ * @brief identifier expression
+ * @note looks up current SSA mapping for the identifier
+ */
 void cplus::ir::IntermediateRepresentation::visit(ast::IdentifierExpression &node)
 {
-    const auto it = _value_map.find(std::string(node.name));
+    const std::string name(node.name);
+    const std::string found = _lookup(name);
 
-    if (it != _value_map.end()) {
-        _last_value = it->second;
-    } else {
-        _last_value = std::string(node.name);
-    }
+    _last_value = found;
 }
 
 void cplus::ir::IntermediateRepresentation::visit(ast::BinaryExpression &node)
@@ -136,41 +214,64 @@ void cplus::ir::IntermediateRepresentation::visit(ast::BinaryExpression &node)
     const std::string right = _last_value;
 
     const std::string op = binary_op_to_string(node.op);
-    const std::string tmp = new_temp("t");
+    const std::string tmp = _new_temp("t");
 
-    emit("  " + tmp + " = " + op + " " + left + ", " + right);
+    _emit("  " + tmp + " = " + op + " " + left + ", " + right);
     _last_value = tmp;
 }
 
+/**
+* @brief unary expression
+* @note ++ -- ! - (type should be handled in semantic analysis "../Analysis/SymbolTable.cpp")
+*/
 void cplus::ir::IntermediateRepresentation::visit(ast::UnaryExpression &node)
 {
-    node.operand->accept(*this);
+    //TODO: refactor this
+    const bool operand_is_ident = dynamic_cast<ast::IdentifierExpression *>(node.operand.get()) != nullptr;
+    std::string ident_name;
 
+    if (operand_is_ident) {
+        const auto *ident = dynamic_cast<ast::IdentifierExpression *>(node.operand.get());
+
+        if (ident) {
+            ident_name = std::string(ident->name);
+        }
+    }
+
+    node.operand->accept(*this);
     const std::string src = _last_value;
-    const std::string opstr = unary_op_to_string(node.op);
-    const std::string tmp = new_temp("u");
+    const std::string tmp = _new_temp("u");
 
     switch (node.op) {
         case ast::UnaryExpression::NOT:
-            emit("  " + tmp + " = icmp.eq " + src + ", const." + ast::to_string(node.type->kind) + "0");
+            _emit("  " + tmp + " = icmp.eq " + src + ", const." + ast::to_string(node.type->kind) + "0");
             break;
         case ast::UnaryExpression::NEGATE:
-
-            emit("  " + tmp + " = neg " + src);
+            _emit("  " + tmp + " = neg " + src);
             break;
         case ast::UnaryExpression::INC:
-            emit("  " + tmp + " = add " + src + ", const." + ast::to_string(node.type->kind) + "1");
+            _emit("  " + tmp + " = add " + src + ", const." + ast::to_string(node.type->kind) + "1");
             break;
         case ast::UnaryExpression::DEC:
-            emit("  " + tmp + " = sub " + src + ", const." + ast::to_string(node.type->kind) + "1");
+            _emit("  " + tmp + " = sub " + src + ", const." + ast::to_string(node.type->kind) + "1");
             break;
         default:
-            emit("  " + tmp + " = " + opstr + " " + src);
+            _emit("  " + tmp + " = " + unary_op_to_string(node.op) + " " + src);
             break;
     }
+
+    /** @brief update current mapping to the new SSA for the identifier only if modifying */
+    if (operand_is_ident && !ident_name.empty() && (node.op == ast::UnaryExpression::INC || node.op == ast::UnaryExpression::DEC)) {
+        _set_name(ident_name, tmp);
+    }
+
     _last_value = tmp;
 }
 
+/**
+* @brief function call expression
+* @note arguments are evaluated left to right
+*/
 void cplus::ir::IntermediateRepresentation::visit(ast::CallExpression &node)
 {
     std::vector<std::string> args;
@@ -181,30 +282,41 @@ void cplus::ir::IntermediateRepresentation::visit(ast::CallExpression &node)
         args.push_back(_last_value);
     }
 
-    const std::string tmp = new_temp("call");
+    const std::string tmp = _new_temp("call");
     std::string arglist;
-    for (size_t i = 0; i < args.size(); ++i) {
-        if (i)
+
+    for (u64 i = 0; i < args.size(); ++i) {
+        if (i) {
             arglist += ", ";
+        }
         arglist += args[i];
     }
 
-    emit("  " + tmp + " = call @" + std::string(node.function_name) + "(" + arglist + ")");
+    _emit("  " + tmp + " = call @" + std::string(node.function_name) + "(" + arglist + ")");
     _last_value = tmp;
 }
 
+/**
+* @brief assignment expression
+* @note variable must already be declared (checked in semantic analysis "../Analysis/SymbolTable.cpp")
+*/
 void cplus::ir::IntermediateRepresentation::visit(ast::AssignmentExpression &node)
 {
     node.value->accept(*this);
 
     const std::string value = _last_value;
     const std::string vname(node.variable_name);
-    const std::string ssa = new_temp(vname);
+    const std::string ssa = _new_temp(vname);
 
-    emit("  " + ssa + " = mov " + value);
+    _emit("  " + ssa + " = mov " + value);
+    _set_name(vname, ssa);
     _last_value = ssa;
 }
 
+/**
+* @brief expression statement
+* @note TODO
+*/
 void cplus::ir::IntermediateRepresentation::visit(ast::ExpressionStatement &node)
 {
     if (node.expression) {
@@ -213,88 +325,196 @@ void cplus::ir::IntermediateRepresentation::visit(ast::ExpressionStatement &node
     _last_value.clear();
 }
 
+/**
+* @brief block statement
+* @note creates a new scope for variables
+*/
 void cplus::ir::IntermediateRepresentation::visit(ast::BlockStatement &node)
 {
+    _push_copy();
     for (const auto &stmt : node.statements) {
         stmt->accept(*this);
     }
+    _pop();
 }
 
+/**
+* @brief variable declaration
+* @note initializer is optional
+*/
 void cplus::ir::IntermediateRepresentation::visit(ast::VariableDeclaration &node)
 {
     const std::string name(node.name);
-    const std::string ssa = new_temp(name);
+    const std::string ssa = _new_temp(name);
 
     if (node.initializer) {
         node.initializer->accept(*this);
-        emit("  " + ssa + " = mov " + _last_value);
+        _emit("  " + ssa + " = mov " + _last_value);
         _last_value.clear();
     } else {
-        emit("  " + ssa + " = undef");
+        _emit("  " + ssa + " = undef");
     }
-    _value_map[name] = ssa;
+    _set_name(name, ssa);
 }
 
+/**
+* @brief return statement
+* @note value is optional bc we've already checked for void functions in semantic analysis
+*/
 void cplus::ir::IntermediateRepresentation::visit(ast::ReturnStatement &node)
 {
     if (node.value) {
         node.value->accept(*this);
-        emit("  ret " + _last_value);
+        _emit("  ret " + _last_value);
 
     } else {
-        emit("  ret");
+        _emit("  ret");
     }
 
-    _last_value.clear();
+    // _last_value.clear();
 }
 
-void cplus::ir::IntermediateRepresentation::visit(ast::IfStatement __attribute__((unused)) & node)
+/**
+ * @brief if-else statement handling with SSA phi nodes
+ * @note cond is evaluated first, but branch labels are not emitted here to keep IR structured
+ */
+void cplus::ir::IntermediateRepresentation::visit(ast::IfStatement &node)
 {
-    //TODO
+    /** @brief evaluate condition first */
+    node.condition->accept(*this);
+    const std::string cond = _last_value;
+    _last_value.clear();
+
+    const std::string then_label = _new_label("if.then");
+    const std::string else_label = node.else_statement ? _new_label("if.else") : _new_label("if.end");
+    const std::string end_label = _new_label("if.end");
+
+    _emit("  br " + cond + ", %" + then_label + ", %" + else_label);
+
+    /** @brief snapshot parent map */
+    const std::unordered_map<std::string, std::string> parent_map = _current_map();
+
+    /** @brief then branch */
+    _emit("label %" + then_label + ":");
+    _push_copy();
+    if (node.then_statement) {
+        node.then_statement->accept(*this);
+    }
+    const std::unordered_map<std::string, std::string> then_map = _current_map();
+    _pop();
+    _emit("  br %" + end_label);
+
+    /** @brief else branch (if any) */
+    std::unordered_map<std::string, std::string> else_map;
+    _emit("label %" + else_label + ":");
+    if (node.else_statement) {
+        _push_copy();
+        node.else_statement->accept(*this);
+        else_map = _current_map();
+        _pop();
+    } else {
+        else_map = parent_map;
+    }
+    _emit("  br %" + end_label);
+
+    /** @brief end label and phis */
+    _emit("label %" + end_label + ":");
+
+    /** @brief collect all variable names from parent, then, and else maps */
+    std::unordered_set<std::string> varset;
+    for (const auto &kv : parent_map) {
+        varset.insert(kv.first);
+    }
+    for (const auto &kv : then_map) {
+        varset.insert(kv.first);
+    }
+    for (const auto &kv : else_map) {
+        varset.insert(kv.first);
+    }
+
+    /** @brief foreach variable with differing results, emit a phi & update current mapping */
+    for (const auto &var : varset) {
+        const std::string parent_ssa = parent_map.count(var) ? parent_map.at(var) : "undef";
+        const std::string then_ssa = then_map.count(var) ? then_map.at(var) : parent_ssa;
+        const std::string else_ssa = else_map.count(var) ? else_map.at(var) : parent_ssa;
+
+        if (then_ssa == else_ssa) {
+            _set_name(var, then_ssa);
+            continue;
+        }
+
+        const std::string phi_ssa = _new_temp(var + "_phi");
+
+        _emit("  " + phi_ssa + " = phi [" + then_ssa + ", %" + then_label + "], [" + else_ssa + ", %" + else_label + "]");
+        _set_name(var, phi_ssa);
+    }
 }
 
+/**
+ * @brief for loop
+ * @note TODO
+ */
 void cplus::ir::IntermediateRepresentation::visit(ast::ForStatement __attribute__((unused)) & node)
 {
     //TODO
 }
 
+/**
+* @brief foreach loop
+* @note TODO
+*/
 void cplus::ir::IntermediateRepresentation::visit(ast::ForeachStatement __attribute__((unused)) & node)
 {
     //TODO
 }
 
+/**
+* @brief case statement
+* @note TODO
+ */
 void cplus::ir::IntermediateRepresentation::visit(ast::CaseStatement __attribute__((unused)) & node)
 {
     //TODO
 }
 
+/**
+* @brief function declaration
+* @note creates a new scope for parameters and local variables
+*/
 void cplus::ir::IntermediateRepresentation::visit(ast::FunctionDeclaration &node)
 {
     _current_function = std::string(node.name);
-    emit("func @" + _current_function + "() -> " + ast::to_string(node.return_type->kind));
-    emit("{");
+    _emit("func @" + _current_function + "() -> " + ast::to_string(node.return_type->kind));
+    _emit("{");
+
+    _push();
 
     for (u64 i = 0; i < node.parameters.size(); ++i) {
         const auto &p = node.parameters[i];
         const std::string name(p.name);
-        const std::string ssa = new_temp(name);
+        const std::string ssa = _new_temp(name);
 
-        emit("  " + ssa + " = arg " + std::to_string(i));
-        _value_map[name] = ssa;
+        _emit("  " + ssa + " = arg " + std::to_string(i));
+        _set_name(name, ssa);
     }
 
     if (node.body) {
         node.body->accept(*this);
     }
 
-    /** @brief only emit implicit return if last statement wasn’t a return */
+    /** @brief only emit implicit return if last statement wasn’t a return to avoid multiple ret */
     if (_output.rfind("  ret", _output.size() - 5) == std::string::npos) {
-        emit("  ret");
+        _emit("  ret");
     }
 
-    emit("}");
+    _emit("}");
+    _pop();
 }
 
+/**
+* @brief module
+* @note ast visitor entry point
+*/
 void cplus::ir::IntermediateRepresentation::visit(ast::Module &node)
 {
     for (const auto &decl : node.declarations) {
