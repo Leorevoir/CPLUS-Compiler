@@ -1,8 +1,9 @@
 #pragma once
 
-#include <CPlus/Analysis/SymbolTable.hpp>
 #include <CPlus/Compiler/Interface.hpp>
 #include <CPlus/Parser/Types.hpp>
+
+#include <unordered_map>
 
 namespace cplus::ir {
 
@@ -12,13 +13,13 @@ namespace cplus::ir {
  * @input st::ASTScope (AST + symbol table)
  * @output std::string (IR as text)
  */
-class IntermediateRepresentation : public CompilerPass<std::unique_ptr<ast::Module>, std::string>, public ast::ASTVisitor
+class IntermediateRepresentation : public CompilerPass<std::unique_ptr<ast::Module>, const std::string>, public ast::ASTVisitor
 {
     public:
         IntermediateRepresentation() = default;
         ~IntermediateRepresentation() override = default;
 
-        std::string run(const std::unique_ptr<cplus::ast::Module> &scope) override;
+        const std::string run(const std::unique_ptr<cplus::ast::Module> &scope) override;
 
     private:
         std::unordered_map<std::string, std::string> _value_map;

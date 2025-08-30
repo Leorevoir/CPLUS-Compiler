@@ -5,7 +5,7 @@
  * public
  */
 
-std::string cplus::ir::IntermediateRepresentation::run(const std::unique_ptr<ast::Module> &module)
+const std::string cplus::ir::IntermediateRepresentation::run(const std::unique_ptr<ast::Module> &module)
 {
     _temp_counter = 0;
     _label_counter = 0;
