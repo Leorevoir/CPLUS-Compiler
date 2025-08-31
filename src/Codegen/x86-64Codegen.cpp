@@ -1,7 +1,8 @@
+#include "CPlus/Logger.hpp"
 #include <CPlus/Codegen/x86-64Codegen.hpp>
 
+#include <regex>
 #include <sstream>
-#include <unordered_set>
 
 /**
 * public
@@ -55,64 +56,74 @@ static inline void _trim(std::string &s)
 }
 
 /**
- * @brief count slots
- * @info counts the number of slots in the function body
+ * @brief count slots as GCC stack would allocate using regex
+ * @info counts only what ends up in stack slots: call results or local variables, ignoring args and temps
  */
 static cplus::u64 _count_slots(const std::string_view body)
 {
+    std::regex slot_re(R"(%([a-zA-Z0-9_]+)\s*=\s*(.*))");
+    std::smatch match;
     cplus::u64 count = 0;
-    cplus::u64 pos = 0;
+    std::string s{body};
+    std::string::const_iterator search(s.cbegin());
 
-    while (pos < body.size()) {
-        const cplus::u64 p = body.find('%', pos);
+    while (std::regex_search(search, s.cend(), match, slot_re)) {
+        const std::string var = match[1];
+        const std::string rhs = match[2];
 
-        if (p == std::string_view::npos) {
-            break;
+        /** @brief dont count numbered vars */
+        if (var.size() > 1 && (var[0] == 'n' && isdigit(var[1]))) {
+            search = match.suffix().first;
+            continue;
         }
 
-        const cplus::u64 eq = body.find('=', p);
-
-        if (eq != std::string_view::npos) {
-            const std::string_view tmp = body.substr(p, eq - p);
-
-            if (tmp.find("arg") == std::string_view::npos) {
-                ++count;
-            }
+        /** @brief dont count temps */
+        if (var.size() > 1 && (var[0] == 't' || rhs.find("call") == std::string::npos)) {
+            search = match.suffix().first;
+            continue;
         }
-        pos = eq != std::string_view::npos ? eq + 1 : p + 1;
+
+        ++count;
+        search = match.suffix().first;
     }
-    return count;
-}
 
-/**
- * @brief align size to 16 bytes
- * @info aligns the given size to the next multiple of 16 for SIMD vectorisation & stack alignment
- */
-static inline cplus::u64 _align16(const cplus::u64 size)
-{
-    return (size + 15) & ~static_cast<cplus::u64>(15);
+    return count;
 }
 
 /**
 * @brief set function stack  offset
 * @info sets the stack offset for the current function based on the number of slots used
 *
-* keep the stack aligned to 16 byte for SIMD vectorisation
+* keep the stack aligned to 16 byte for ABI System V convention
 */
 static inline void _function_set_stack_offset(cplus::u64 *offset, const std::string &ir, const std::string &current_function)
 {
-
     const cplus::u64 start = ir.find('{', ir.find("func @" + current_function));
     const cplus::u64 end = ir.find('}', start);
 
-    if (start != std::string::npos && end != std::string::npos) {
-        const std::string_view body{ir.data() + start + 1, end - start - 1};
-        const cplus::u64 slots = _count_slots(body);
-
-        *offset = _align16(slots * 8);
-    } else {
+    if (start == std::string::npos || end == std::string::npos) {
         *offset = 0;
+        return;
     }
+
+    const std::string_view body{ir.data() + start + 1, end - start - 1};
+    const cplus::u64 slots = _count_slots(body);
+
+    const cplus::u64 stack_size = slots * 8;
+    cplus::u64 padding = (16 - (stack_size % 16)) % 16;
+
+    /** @brief recursive functions needs extra padding to keep rsp aligned before call */
+    const bool is_recursive = body.find("call @" + current_function) != std::string::npos;
+
+    if (is_recursive) {
+
+        /** @brief add 8 bytes if stack_size is already multiple of 16 */
+        if (stack_size % 16 == 0) {
+            padding += 8;
+        }
+    }
+
+    *offset = stack_size + padding;
 }
 
 /**
@@ -231,6 +242,7 @@ void cplus::x86_64::Codegen::_emit_function_declaration(const std::string &line)
     _emit(".globl\t\t\t" + _current_function);
     _emit(_current_function + ":");
     _function_set_stack_offset(&_stack_offset, _ir, _current_function);
+    logger::info("function: ", _current_function, " stack offset: ", std::to_string(_stack_offset));
 }
 
 /**

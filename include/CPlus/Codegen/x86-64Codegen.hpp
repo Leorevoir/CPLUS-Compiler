@@ -3,8 +3,6 @@
 #include <CPlus/Compiler/Interface.hpp>
 #include <CPlus/Types.hpp>
 
-#include <unordered_map>
-
 namespace cplus {
 
 namespace x86_64 {
