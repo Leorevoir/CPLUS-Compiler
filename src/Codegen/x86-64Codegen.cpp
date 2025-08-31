@@ -95,6 +95,7 @@ static cplus::u64 _count_slots(const std::string_view body)
 * @info sets the stack offset for the current function based on the number of slots used
 *
 * keep the stack aligned to 16 byte for ABI System V convention
+* enfin en vrai sur 8 bytes mais on aligne à 16 grâce à push rbp
 */
 static inline void _function_set_stack_offset(cplus::u64 *offset, const std::string &ir, const std::string &current_function)
 {
@@ -110,20 +111,20 @@ static inline void _function_set_stack_offset(cplus::u64 *offset, const std::str
     const cplus::u64 slots = _count_slots(body);
 
     const cplus::u64 stack_size = slots * 8;
-    cplus::u64 padding = (16 - (stack_size % 16)) % 16;
 
-    /** @brief recursive functions needs extra padding to keep rsp aligned before call */
+    /** @brief push rbp takes 8 bytes, so include it in alignment calculation */
+    const cplus::u64 total_before_call = stack_size + 8;
+    cplus::u64 padding = (16 - (total_before_call % 8)) % 8;
+
+    /** @brief Recursive functions need extra 8 bytes if stack_size already aligned */
     const bool is_recursive = body.find("call @" + current_function) != std::string::npos;
-
-    if (is_recursive) {
-
-        /** @brief add 8 bytes if stack_size is already multiple of 16 */
-        if (stack_size % 16 == 0) {
-            padding += 8;
-        }
+    if (is_recursive && (stack_size % 16 == 0)) {
+        padding += 8;
     }
 
     *offset = stack_size + padding;
+    cplus::logger::info("function ", current_function, " slots: ", std::to_string(slots),
+        " stack offset (with padding): ", std::to_string(*offset));
 }
 
 /**
