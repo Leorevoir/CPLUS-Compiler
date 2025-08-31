@@ -252,6 +252,10 @@ void cplus::x86_64::Codegen::_emit_label(const std::string &line)
         label.pop_back();
     }
 
+    if (label.starts_with('%')) {
+        label = label.substr(1);
+    }
+
     _emit(".L" + label + ":");
 }
 
