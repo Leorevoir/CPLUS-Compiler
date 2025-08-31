@@ -39,6 +39,18 @@ static const std::string _get_module_name(const std::string &ir)
     return ir.substr(start, end - start);
 }
 
+static inline void _trim(std::string &s)
+{
+    const cplus::u64 first = s.find_first_not_of(" \t\n\r");
+    const cplus::u64 last = s.find_last_not_of(" \t\n\r");
+
+    if (first == std::string::npos || last == std::string::npos) {
+        s.clear();
+    } else {
+        s = s.substr(first, last - first + 1);
+    }
+}
+
 /**
  * @brief count slots
  * @info counts the number of slots in the function body
@@ -135,6 +147,7 @@ void cplus::x86_64::Codegen::_generate()
     std::string line;
 
     while (std::getline(stream, line)) {
+        _trim(line);
         _generate_line(line);
     }
 }
@@ -155,6 +168,10 @@ void cplus::x86_64::Codegen::_generate_line(const std::string &line)
         _emit_function_start();
     } else if (line == "}") {
         _emit_function_end();
+    } else if (line.starts_with("label %")) {
+        _emit_label(line);
+    } else if (line.starts_with("call @")) {
+        _emit_function_call(line);
     }
 }
 
@@ -225,4 +242,25 @@ void cplus::x86_64::Codegen::_emit_function_end()
     _emit("\tret\n");
     _current_function.clear();
     _stack_offset = 0;
+}
+
+void cplus::x86_64::Codegen::_emit_label(const std::string &line)
+{
+    std::string label = line.substr(6);
+
+    if (!label.empty() && label.back() == ':') {
+        label.pop_back();
+    }
+
+    _emit(".L" + label + ":");
+}
+
+void cplus::x86_64::Codegen::_emit_function_call(const std::string &line)
+{
+    const auto paren_pos = line.find('(');
+    std::string rest = (paren_pos == std::string::npos) ? line.substr(6) : line.substr(6, paren_pos - 6);
+
+    rest.erase(rest.find_last_not_of(" \t") + 1);
+    rest.erase(0, rest.find_first_not_of(" \t"));
+    _emit("\tcall\t" + rest);
 }

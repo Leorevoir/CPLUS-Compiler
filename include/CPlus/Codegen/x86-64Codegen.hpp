@@ -38,6 +38,9 @@ class Codegen : public CompilerPass<const std::string, const std::string>
         void _emit_function_declaration(const std::string &line);
         void _emit_function_start();
         void _emit_function_end();
+
+        void _emit_label(const std::string &line);
+        void _emit_function_call(const std::string &line);
 };
 
 }// namespace x86_64
