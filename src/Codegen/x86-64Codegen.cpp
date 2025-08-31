@@ -198,7 +198,7 @@ void cplus::x86_64::Codegen::_generate_line(const std::string &line)
         _emit_function_end();
     } else if (line.starts_with("label %")) {
         _emit_label(line);
-    } else if (line.starts_with("call @")) {
+    } else if (line.starts_with("%call")) {
         _emit_function_call(line);
     }
 }
@@ -263,10 +263,6 @@ void cplus::x86_64::Codegen::_emit_function_start()
 */
 void cplus::x86_64::Codegen::_emit_function_end()
 {
-    if (_stack_offset > 0) {
-        _emit("\tadd\t\trsp, " + std::to_string(_stack_offset));
-    }
-
     _emit("\tleave");
     _emit("\tret\n");
     _current_function.clear();
@@ -290,10 +286,9 @@ void cplus::x86_64::Codegen::_emit_label(const std::string &line)
 
 void cplus::x86_64::Codegen::_emit_function_call(const std::string &line)
 {
-    const auto paren_pos = line.find('(');
-    std::string rest = (paren_pos == std::string::npos) ? line.substr(6) : line.substr(6, paren_pos - 6);
+    const u64 at_pos = line.find('@');
+    const u64 paren_pos = line.find('(', at_pos);
+    const std::string func_name = line.substr(at_pos + 1, paren_pos - at_pos - 1);
 
-    rest.erase(rest.find_last_not_of(" \t") + 1);
-    rest.erase(0, rest.find_first_not_of(" \t"));
-    _emit("\tcall\t" + rest);
+    _emit("\tcall\t" + func_name);
 }
