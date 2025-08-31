@@ -3,6 +3,8 @@
 #include <CPlus/Compiler/Interface.hpp>
 #include <CPlus/Types.hpp>
 
+#include <unordered_map>
+
 namespace cplus {
 
 namespace x86_64 {
@@ -16,7 +18,12 @@ class Codegen : public CompilerPass<const std::string, const std::string>
         const std::string run(const std::string &ir) override;
 
     private:
-        i32 _stack_offset = 0;
+        u64 _stack_offset = 0;
+        i32 _label_count = 0;
+
+        std::unordered_map<std::string, std::string> _variables;
+        std::unordered_map<std::string, std::string> _labels;
+
         std::string _current_function;
         std::string _output;
         std::string _ir;
