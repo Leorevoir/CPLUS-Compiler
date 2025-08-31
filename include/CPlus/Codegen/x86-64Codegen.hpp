@@ -19,10 +19,6 @@ class Codegen : public CompilerPass<const std::string, const std::string>
 
     private:
         u64 _stack_offset = 0;
-        i32 _label_count = 0;
-
-        std::unordered_map<std::string, std::string> _variables;
-        std::unordered_map<std::string, std::string> _labels;
 
         std::string _current_function;
         std::string _output;
@@ -32,6 +28,7 @@ class Codegen : public CompilerPass<const std::string, const std::string>
 
         void _prologue();
         void _generate();
+        void _epilogue();
 
         void _generate_line(const std::string &line);
 

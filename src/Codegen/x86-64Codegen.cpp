@@ -1,6 +1,7 @@
 #include <CPlus/Codegen/x86-64Codegen.hpp>
 
 #include <sstream>
+#include <unordered_set>
 
 /**
 * public
@@ -10,9 +11,11 @@ const std::string cplus::x86_64::Codegen::run(const std::string &ir)
 {
     _ir = std::move(ir);
     _output.clear();
+    _stack_offset = 0;
 
     _prologue();
     _generate();
+    _epilogue();
 
     return _output;
 }
@@ -135,6 +138,20 @@ void cplus::x86_64::Codegen::_prologue()
     _emit("\t.intel_syntax\tnoprefix");
     _emit("\t.file\t\t\t\"" + _get_module_name(_ir) + "\"");
     _emit("\t.section\t\t.text\n");
+}
+
+/**
+ * @brief emit epilogue
+ * @info for debug purposes will be later moved to a separeted linker script
+ */
+void cplus::x86_64::Codegen::_epilogue()
+{
+    _emit("\n.globl\t\t\t_start");
+    _emit("_start:");
+    _emit("\tcall\tmain");
+    _emit("\tmov\t\trdi, rax");
+    _emit("\tmov\t\trax, 60");
+    _emit("\tsyscall");
 }
 
 /**
