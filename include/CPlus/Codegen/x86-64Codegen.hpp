@@ -25,7 +25,6 @@ class Codegen : public CompilerPass<const std::string, const std::string>
 
         void _prologue();
         void _generate();
-        void _epilogue();
 
         void _generate_line(const std::string &line);
 
