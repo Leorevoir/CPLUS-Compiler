@@ -8,7 +8,7 @@
 
 int cplus::cplus_flags = 0;
 std::vector<cplus::cstr> cplus::cplus_input_files;
-cplus::cstr cplus::cplus_output_file = "out.bin";
+cplus::cstr cplus::cplus_output_file = "out.s";
 
 static constexpr auto bold = cplus::logger::CPLUS_BOLD;
 static constexpr auto reset = cplus::logger::CPLUS_RESET;
