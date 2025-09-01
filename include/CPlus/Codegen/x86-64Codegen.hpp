@@ -17,6 +17,7 @@ class Codegen : public CompilerPass<const std::string, const std::string>
 
     private:
         u64 _stack_offset = 0;
+        u8 _register_index = 0;
 
         std::string _current_function;
         std::string _output;
@@ -36,6 +37,7 @@ class Codegen : public CompilerPass<const std::string, const std::string>
 
         void _emit_label(const std::string &line);
         void _emit_function_call(const std::string &line);
+        void _emit_assignement(const std::string &line);
 };
 
 }// namespace x86_64

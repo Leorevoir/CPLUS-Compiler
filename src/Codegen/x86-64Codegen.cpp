@@ -25,6 +25,10 @@ const std::string cplus::x86_64::Codegen::run(const std::string &ir)
  * helpers
  */
 
+static constexpr std::string registers_32[] = {"eax", "ebx", "ecx", "edx", "esi", "edi", "r8d", "r9d", "r10d", "r11d", "r12d", "r13d",
+    "r14d", "r15d"};
+static constexpr cplus::u8 registers_32_count = sizeof(registers_32) / sizeof(registers_32[0]);
+
 static const std::string _get_module_name(const std::string &ir)
 {
     const cplus::u64 module = ir.find("module ");
@@ -95,7 +99,6 @@ static cplus::u64 _count_slots(const std::string_view body)
 * @info sets the stack offset for the current function based on the number of slots used
 *
 * keep the stack aligned to 16 byte for ABI System V convention
-* enfin en vrai sur 8 bytes mais on aligne à 16 grâce à push rbp
 */
 static inline void _function_set_stack_offset(cplus::u64 *offset, const std::string &ir, const std::string &current_function)
 {
@@ -112,9 +115,9 @@ static inline void _function_set_stack_offset(cplus::u64 *offset, const std::str
 
     const cplus::u64 stack_size = slots * 8;
 
-    /** @brief push rbp takes 8 bytes, so include it in alignment calculation */
-    const cplus::u64 total_before_call = stack_size + 8;
-    cplus::u64 padding = (16 - (total_before_call % 8)) % 8;
+    /** @brief push rbp takes 16 bytes, so include it in alignment calculation */
+    const cplus::u64 total_before_call = stack_size + 16;
+    cplus::u64 padding = (16 - (total_before_call % 16)) % 16;
 
     /** @brief Recursive functions need extra 8 bytes if stack_size already aligned */
     const bool is_recursive = body.find("call @" + current_function) != std::string::npos;
@@ -201,6 +204,8 @@ void cplus::x86_64::Codegen::_generate_line(const std::string &line)
         _emit_label(line);
     } else if (line.starts_with("%call")) {
         _emit_function_call(line);
+    } else if (line.starts_with("%n")) {
+        _emit_assignement(line);
     }
 }
 
@@ -292,4 +297,35 @@ void cplus::x86_64::Codegen::_emit_function_call(const std::string &line)
     const std::string func_name = line.substr(at_pos + 1, paren_pos - at_pos - 1);
 
     _emit("\tcall\t" + func_name);
+}
+
+void cplus::x86_64::Codegen::_emit_assignement(const std::string &line)
+{
+    const u64 eq_pos = line.find('=');
+
+    if (eq_pos == std::string::npos) {
+        return;
+    }
+
+    const std::string rhs = line.substr(eq_pos + 2);
+
+    if (!rhs.starts_with("mov")) {
+        return;
+    }
+
+    //TODO handle more complex rhs expressions
+    if (rhs.contains("imm.i32")) {
+        const u64 imm_pos = rhs.find("imm.i32");
+        const std::string imm_value = rhs.substr(imm_pos + 8);
+
+        _emit("\tmov\t\t" + registers_32[_register_index] + ", " + imm_value);
+        _emit("\tmov\t\t[rbp - 8], " + registers_32[_register_index]);
+    }
+
+    if (_register_index + 1 > registers_32_count - 1) {
+        _register_index = 0;
+        return;
+    }
+
+    ++_register_index;
 }
