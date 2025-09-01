@@ -6,6 +6,7 @@
 fibonacci:
 	push rbp
 	mov rbp, rsp
+	#sub rsp, 16
 	sub rsp, 24
     mov dword ptr [rbp - 4], edi
     cmp dword ptr [rbp - 4], 1
@@ -31,6 +32,7 @@ fibonacci:
 main:
 	push rbp
 	mov rbp, rsp
+    # sub rsp, 8
 	mov edi, 10
 	call fibonacci
 	leave
