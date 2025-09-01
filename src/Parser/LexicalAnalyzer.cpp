@@ -40,10 +40,7 @@ std::vector<cplus::lx::Token> cplus::lx::LexicalAnalyzer::run(const FileContent 
     _line = 1;
     _column = 1;
 
-    if (cplus_flags & FLAG_DEBUG) {
-        logger::info("LexicalAnalyzer::run ", "Lexical analyzing module: ", _module);
-    }
-
+    logger::info("Tokenizing module: ", _module, "...");
     _add_token(TokenKind::TOKEN_MODULE, std::move(source.file));
     _tokens.back().line = 0;
     _tokens.back().column = 0;

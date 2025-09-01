@@ -30,10 +30,7 @@ static void cplus_compiler_routine()
     for (const auto &file : cplus::cplus_input_files) {
         cplus::CompilerDriver driver;
         const std::string content = read_file_content(file);
-
-        if (cplus::cplus_flags & cplus::FLAG_DEBUG) {
-            cplus::logger::info("Compiling file: ", file);
-        }
+        cplus::logger::info("Compiling file: ", file);
 
         driver.compile({file, content});
     }

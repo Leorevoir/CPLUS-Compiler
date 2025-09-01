@@ -8,11 +8,10 @@ namespace cplus {
 enum Flags {
     FLAG_HELP = 1 << 0,
     FLAG_VERSION = 1 << 1,
-    FLAG_DEBUG = 1 << 3,
-    FLAG_SHOW_AST = 1 << 4,
-    FLAG_SHOW_TOKENS = 1 << 5,
+    FLAG_SHOW_AST = 1 << 3,
+    FLAG_SHOW_TOKENS = 1 << 4,
+    FLAG_SHOW_IR = 1 << 5,
     FLAG_NONE,
-    FLAG_SHOW_IR = 1 << 6
 };
 
 extern i32 cplus_flags;

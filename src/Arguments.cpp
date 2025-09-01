@@ -31,10 +31,10 @@ static constexpr inline void usage()
 
     print_option("-v,  --version", "    Show version information");
     print_option("-help, --help", "     Show this help message");
-    print_option("-d,  --debug", "      Enable debug mode");
     print_option("-o,  --output", "     Output file");
     print_option("-t,  --show-tokens", "Show Tokens");
     print_option("-a,  --show-ast", "   Show AST");
+    print_option("-i,  --show-ir", "    Show IR");
 
     std::cout << std::endl;
     std::exit(CPLUS_SUCCESS);
@@ -86,8 +86,6 @@ static constexpr FlagEntry _flag_entries[] = {
     {"--help", usage},
     {"-v", version},
     {"--version", version},
-    {"-d", []() { cplus::cplus_flags |= cplus::Flags::FLAG_DEBUG; }},
-    {"--debug", []() { cplus::cplus_flags |= cplus::Flags::FLAG_DEBUG; }},
     {"-t", []() { cplus::cplus_flags |= cplus::Flags::FLAG_SHOW_TOKENS; }},
     {"--show-tokens", []() { cplus::cplus_flags |= cplus::Flags::FLAG_SHOW_TOKENS; }},
     {"-a", []() { cplus::cplus_flags |= cplus::Flags::FLAG_SHOW_AST; }},

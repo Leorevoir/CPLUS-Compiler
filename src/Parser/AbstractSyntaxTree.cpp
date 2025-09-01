@@ -130,9 +130,7 @@ std::unique_ptr<cplus::ast::Module> cplus::ast::AbstractSyntaxTree::_parse_modul
     module->name = std::move(module_name.lexeme);
     _module = module->name.c_str();
 
-    if (cplus_flags & FLAG_DEBUG) {
-        logger::info("AbstractSyntaxTree::run ", "Parsing tokens to AST for module: ", _module);
-    }
+    logger::info("Building AST for module: ", _module, "...");
 
     while (!_is_at_end()) {
         if (auto decl = _parse_declaration()) {

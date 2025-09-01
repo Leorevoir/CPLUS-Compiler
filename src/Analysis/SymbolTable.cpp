@@ -11,9 +11,7 @@
 std::unique_ptr<cplus::ast::Module> cplus::st::SymbolTable::run(const std::unique_ptr<ast::Module> &module)
 {
     _module = module->name.c_str();
-    if (cplus_flags & FLAG_DEBUG) {
-        logger::info("SymbolTable::run ", "Building symbol table for module: ", _module);
-    }
+    logger::info("Building symbol table for module: ", _module, "...");
 
     _enter_scope();
     module->accept(*this);

@@ -17,9 +17,7 @@ const std::string cplus::ir::IntermediateRepresentation::run(const std::unique_p
     _current_function.clear();
     _value_map_stack.clear();
 
-    if (cplus_flags & FLAG_DEBUG) {
-        logger::info("IntermediateRepresentation::run", "Generating IR for module " + module->name);
-    }
+    logger::info("Generating IR for module " + module->name);
 
     _push();
     _emit("; C+ generated IR for module " + module->name);
